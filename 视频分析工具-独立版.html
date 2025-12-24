@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频逐帧分析与AI提示词生成 - 独立版</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .config-section {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-group small {
+      display: block;
+      margin-top: 5px;
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .warning-box strong {
+      color: #856404;
+    }
+
+    .warning-box p {
+      margin: 8px 0 0 0;
+      color: #856404;
+      font-size: 0.95em;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .info-box h4 {
+      color: #1976d2;
+      margin-bottom: 8px;
+    }
+
+    .info-box ul {
+      margin-left: 20px;
+      color: #555;
+    }
+
+    .upload-area {
+      border: 3px dashed #667eea;
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: white;
+    }
+
+    .upload-area:hover {
+      background: #f0f4ff;
+      border-color: #764ba2;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .progress-section {
+      display: none;
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 30px;
+      margin-top: 30px;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e0e0e0;
+      border-radius: 15px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+      width: 0%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+
+    .results {
+      display: none;
+      margin-top: 30px;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .results-header h2 {
+      color: #667eea;
+    }
+
+    .export-btn {
+      background: #28a745;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      margin-left: 10px;
+    }
+
+    .export-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .result-item {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      animation: fadeIn 0.5s;
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-item-inner {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .result-item-image {
+      flex-shrink: 0;
+      flex-grow: 0;
+      width: auto;
+    }
+
+    .result-item img {
+      width: auto;
+      height: auto;
+      max-width: 350px;
+      max-height: 500px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      display: block;
+    }
+
+    .result-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-content h3 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .result-content .timestamp {
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+    }
+
+    .result-content .prompt {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .copy-prompt-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.85em;
+      font-weight: bold;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+
+    .copy-prompt-btn:hover {
+      background: #764ba2;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    .copy-prompt-btn:active {
+      transform: translateY(0);
+    }
+
+    .copy-prompt-btn.copied {
+      background: #28a745;
+    }
+
+    .prompt-text {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: none;
+      overflow: visible;
+    }
+    
+    .prompt-text.collapsed {
+      max-height: 150px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .prompt-text.collapsed::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
+      pointer-events: none;
+    }
+
+    .prompt-text.expanded {
+      max-height: none;
+      overflow: visible;
+    }
+    
+    .prompt-text.expanded::after {
+      display: none;
+    }
+
+    .expand-btn {
+      display: inline-block;
+      margin-top: 8px;
+      color: #667eea;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9em;
+      user-select: none;
+    }
+
+    .expand-btn:hover {
+      color: #764ba2;
+      text-decoration: underline;
+    }
+
+    .api-config {
+      display: none;
+    }
+
+    .api-config.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎬 视频逐帧分析系统</h1>
+      <p>上传视频，AI自动生成每帧画面的详细提示词</p>
+    </div>
+
+    <div class="content">
+      <!-- 说明信息 -->
+      <div class="info-box">
+        <h4>📋 使用说明</h4>
+        <ul>
+          <li>支持的视频格式：MP4、AVI、MOV、MKV、WebM等</li>
+          <li>帧间隔：设置每隔多少秒提取一帧（建议3-5秒）</li>
+          <li>所有处理在浏览器本地完成，视频不会上传到服务器</li>
+          <li>AI分析需要有效的API密钥</li>
+          <li><strong>💡 快速配置：</strong>可以导入.env文件一键加载配置，或手动填写API Key</li>
+        </ul>
+      </div>
+
+      <!-- CORS警告 -->
+      <div class="warning-box" id="corsWarning" style="display: none;">
+        <strong>⚠️ 检测到CORS跨域问题</strong>
+        <p>
+          由于浏览器安全限制，本页面需要通过HTTP服务器运行才能正常调用AI API。<br>
+          <strong>解决方法：</strong>
+        </p>
+        <ol style="margin: 10px 0 0 20px; color: #856404;">
+          <li>命令行运行: <code style="background: white; padding: 2px 6px; border-radius: 3px;">python -m http.server 8080</code></li>
+          <li>然后访问: <code style="background: white; padding: 2px 6px; border-radius: 3px;">http://localhost:8080/视频分析工具-独立版.html</code></li>
+          <li>或使用完整的服务器版本: <code style="background: white; padding: 2px 6px; border-radius: 3px;">node server.js</code></li>
+        </ol>
+      </div>
+
+      <!-- API配置 -->
+      <div class="config-section">
+        <h3 style="margin-bottom: 20px;">⚙️ API配置</h3>
+
+        <div class="form-group">
+          <label>选择AI平台</label>
+          <select id="apiProvider">
+            <option value="qwen">千问 (Qwen)</option>
+            <option value="volcengine">火山引擎</option>
+            <option value="deepseek" disabled>DeepSeek (暂不支持)</option>
+          </select>
+        </div>
+
+        <!-- 千问配置 -->
+        <div id="qwenConfig" class="api-config active">
+          <div class="form-group">
+            <label>千问 API Key</label>
+            <input type="password" id="qwenApiKey" placeholder="sk-...">
+            <small>获取地址: <a href="https://dashscope.console.aliyun.com/apiKey" target="_blank">https://dashscope.console.aliyun.com/apiKey</a></small>
+          </div>
+          <div class="form-group">
+            <label>模型名称</label>
+            <input type="text" id="qwenModel" value="qwen-vl-max" placeholder="qwen-vl-max">
+            <small>官方推荐: qwen-vl-max 或 qwen-vl-plus</small>
+          </div>
+          <div class="form-group">
+            <label>API 端点（可选）</label>
+            <input type="text" id="qwenBaseUrl" value="" placeholder="留空使用官方API，或填写自建服务地址">
+            <small>💡 留空则使用阿里云官方API；填写则使用自建服务（如：http://43.173.153.29:11436/v1/chat/completions）</small>
+          </div>
+        </div>
+
+        <!-- 火山引擎配置 -->
+        <div id="volcengineConfig" class="api-config">
+          <div class="form-group">
+            <label>火山引擎 API Key</label>
+            <input type="password" id="volcengineApiKey" placeholder="your_api_key">
+            <small>获取地址: <a href="https://console.volcengine.com/" target="_blank">https://console.volcengine.com/</a></small>
+          </div>
+          <div class="form-group">
+            <label>模型名称</label>
+            <input type="text" id="volcengineModel" placeholder="doubao-vision-pro-32k">
+            <small>例如: doubao-vision-pro-32k</small>
+          </div>
+          <div class="form-group">
+            <label>API地址</label>
+            <input type="text" id="volcengineBaseUrl" value="https://ark.cn-beijing.volces.com/api/v3">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button class="btn" id="loadEnvBtn" style="width: auto; padding: 10px 30px; background: #17a2b8;">📁 导入.env文件</button>
+          <button class="btn" id="saveConfigBtn" style="width: auto; padding: 10px 30px;">💾 保存配置</button>
+          <button class="btn" id="downloadEnvBtn" style="width: auto; padding: 10px 30px; background: #6c757d;">📥 下载.env模板</button>
+        </div>
+        <input type="file" id="envFileInput" accept=".env" style="display: none;">
+      </div>
+
+      <!-- 视频上传 -->
+      <div class="config-section">
+        <h3 style="margin-bottom: 20px;">📹 视频分析</h3>
+
+        <div class="form-group">
+          <label>提取模式</label>
+          <select id="extractMode">
+            <option value="smart">🎬 智能分镜模式（推荐）</option>
+            <option value="fixed">⏱️ 固定间隔模式</option>
+          </select>
+          <small id="modeDescription">自动检测镜头切换，捕获画面精华，过滤全黑全白帧</small>
+        </div>
+
+        <div id="fixedModeSettings" style="display: none;">
+          <div class="form-group">
+            <label>帧提取间隔（秒）</label>
+            <input type="number" id="frameInterval" value="5" min="1" max="10">
+            <small>值越小帧数越多，处理时间越长</small>
+          </div>
+        </div>
+
+        <div id="smartModeSettings">
+          <div class="form-group">
+            <label>分镜敏感度</label>
+            <select id="sceneSensitivity">
+              <option value="low">低（大幅度变化）</option>
+              <option value="medium" selected>中（推荐）</option>
+              <option value="high">高（细微变化）</option>
+            </select>
+            <small>控制镜头切换检测的灵敏度</small>
+          </div>
+
+          <div class="form-group">
+            <label>内容质量阈值</label>
+            <input type="range" id="qualityThreshold" min="0" max="100" value="30" step="5">
+            <small>当前值: <span id="qualityValue">30</span> - 过滤低质量画面（全黑、全白、模糊）</small>
+          </div>
+
+          <div class="form-group">
+            <label>最小分镜间隔（秒）</label>
+            <input type="number" id="minSceneInterval" value="2" min="0.5" max="10" step="0.5">
+            <small>避免同一镜头提取过多帧</small>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>上传视频文件</label>
+          <div class="upload-area" id="uploadArea">
+            <div style="font-size: 3em; margin-bottom: 15px;">📹</div>
+            <p style="font-size: 1.2em; margin-bottom: 10px;">点击或拖拽视频文件到此处</p>
+            <p style="color: #666;">支持 MP4, AVI, MOV, MKV, WebM 等格式</p>
+            <input type="file" id="videoInput" accept="video/*" style="display: none;">
+          </div>
+        </div>
+
+        <button class="btn" id="analyzeBtn">开始分析</button>
+      </div>
+
+      <!-- 进度显示 -->
+      <div class="progress-section" id="progressSection">
+        <div class="progress-info">
+          <h3 id="progressStatus">正在处理...</h3>
+          <span id="progressPercent" style="font-size: 1.5em; font-weight: bold; color: #667eea;">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progressBarFill">
+            <span id="progressText"></span>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9em; color: #666;">
+          <span id="progressDetail">总共 0 帧</span>
+          <span id="progressTime">预计剩余: --</span>
+        </div>
+      </div>
+
+      <!-- 结果显示 -->
+      <div class="results" id="results">
+        <div class="results-header">
+          <h2>分析结果</h2>
+          <div>
+            <button class="export-btn" id="exportTxtBtn">📄 导出TXT</button>
+            <button class="export-btn" id="exportJsonBtn" style="background: #6f42c1;">📋 导出JSON</button>
+            <button class="export-btn" id="copyAllBtn" style="background: #fd7e14;">📑 复制全部</button>
+          </div>
+        </div>
+        <div id="resultsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="canvas" style="display: none;"></canvas>
+  <video id="videoPreview" style="display: none;"></video>
+
+  <script>
+    // DOM元素
+    const apiProvider = document.getElementById('apiProvider');
+    const uploadArea = document.getElementById('uploadArea');
+    const videoInput = document.getElementById('videoInput');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const progressSection = document.getElementById('progressSection');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const results = document.getElementById('results');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const videoPreview = document.getElementById('videoPreview');
+    const canvas = document.getElementById('canvas');
+    const exportTxtBtn = document.getElementById('exportTxtBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const copyAllBtn = document.getElementById('copyAllBtn');
+    const loadEnvBtn = document.getElementById('loadEnvBtn');
+    const downloadEnvBtn = document.getElementById('downloadEnvBtn');
+    const envFileInput = document.getElementById('envFileInput');
+
+    let analysisResults = [];
+    let processingStartTime = 0;
+
+    // 页面加载时从localStorage加载配置
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedConfig();
+    });
+
+    // API平台切换
+    apiProvider.addEventListener('change', (e) => {
+      document.querySelectorAll('.api-config').forEach(el => el.classList.remove('active'));
+      document.getElementById(e.target.value + 'Config').classList.add('active');
+    });
+
+    // 提取模式切换
+    const extractMode = document.getElementById('extractMode');
+    const fixedModeSettings = document.getElementById('fixedModeSettings');
+    const smartModeSettings = document.getElementById('smartModeSettings');
+    const modeDescription = document.getElementById('modeDescription');
+    const qualityThreshold = document.getElementById('qualityThreshold');
+    const qualityValue = document.getElementById('qualityValue');
+
+    extractMode.addEventListener('change', (e) => {
+      if (e.target.value === 'fixed') {
+        fixedModeSettings.style.display = 'block';
+        smartModeSettings.style.display = 'none';
+        modeDescription.textContent = '按固定时间间隔提取视频帧';
+      } else {
+        fixedModeSettings.style.display = 'none';
+        smartModeSettings.style.display = 'block';
+        modeDescription.textContent = '自动检测镜头切换，捕获画面精华，过滤全黑全白帧';
+      }
+    });
+
+    // 质量阈值滑块
+    qualityThreshold.addEventListener('input', (e) => {
+      qualityValue.textContent = e.target.value;
+    });
+
+    // 上传区域交互
+    uploadArea.addEventListener('click', () => videoInput.click());
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.background = '#f0f4ff';
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.background = 'white';
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.background = 'white';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        videoInput.files = files;
+        updateUploadAreaText(files[0].name);
+      }
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        updateUploadAreaText(e.target.files[0].name);
+      }
+    });
+
+    function updateUploadAreaText(filename) {
+      uploadArea.innerHTML = `
+        <div style="font-size: 3em; margin-bottom: 15px; color: #4caf50;">✓</div>
+        <p style="font-size: 1.2em; margin-bottom: 10px;">已选择文件</p>
+        <p style="color: #667eea; font-weight: bold;">${filename}</p>
+      `;
+    }
+
+    // 保存配置
+    saveConfigBtn.addEventListener('click', () => {
+      const config = getAPIConfig();
+      localStorage.setItem('videoAnalyzerConfig', JSON.stringify(config));
+      alert('✅ 配置已保存到浏览器！');
+    });
+
+    // 导入.env文件
+    loadEnvBtn.addEventListener('click', () => {
+      envFileInput.click();
+    });
+
+    envFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const config = parseEnvFile(text);
+        
+        // 应用配置到界面
+        if (config.API_PROVIDER) {
+          const provider = config.API_PROVIDER.toLowerCase();
+          if (provider === 'qwen' || provider === 'volcengine') {
+            apiProvider.value = provider;
+            apiProvider.dispatchEvent(new Event('change'));
+          }
+        }
+
+        // 千问配置
+        if (config.QWEN_API_KEY) {
+          document.getElementById('qwenApiKey').value = config.QWEN_API_KEY;
+        }
+        if (config.QWEN_MODEL) {
+          document.getElementById('qwenModel').value = config.QWEN_MODEL;
+        }
+        if (config.QWEN_BASE_URL) {
+          document.getElementById('qwenBaseUrl').value = config.QWEN_BASE_URL;
+        }
+
+        // 火山引擎配置
+        if (config.VOLCENGINE_API_KEY) {
+          document.getElementById('volcengineApiKey').value = config.VOLCENGINE_API_KEY;
+        }
+        if (config.VOLCENGINE_MODEL) {
+          document.getElementById('volcengineModel').value = config.VOLCENGINE_MODEL;
+        }
+        if (config.VOLCENGINE_BASE_URL) {
+          document.getElementById('volcengineBaseUrl').value = config.VOLCENGINE_BASE_URL;
+        }
+
+        // 帧间隔配置
+        if (config.FRAME_INTERVAL) {
+          document.getElementById('frameInterval').value = config.FRAME_INTERVAL;
+        }
+
+        alert('✅ .env文件加载成功！请点击"💾 保存配置"以保存到浏览器。');
+        
+        // 清空文件选择，允许重复导入同一文件
+        envFileInput.value = '';
+      } catch (error) {
+        console.error('读取.env文件失败:', error);
+        alert('❌ .env文件读取失败: ' + error.message);
+      }
+    });
+
+    // 下载.env模板
+    downloadEnvBtn.addEventListener('click', () => {
+      const currentConfig = getAPIConfig();
+      const provider = currentConfig.provider;
+      
+      let envContent = `# 视频分析系统配置文件
+# 生成时间: ${new Date().toISOString().split('T')[0]}
+
+# 选择使用的API服务: volcengine, qwen
+API_PROVIDER=${provider}
+
+# 千问配置
+QWEN_API_KEY=${currentConfig.qwen.apiKey || 'sk-your-qwen-api-key-here'}
+QWEN_MODEL=${currentConfig.qwen.model || 'qwen-vl-max'}
+QWEN_BASE_URL=${currentConfig.qwen.baseUrl || ''}  # 留空使用官方API，填写则使用自建服务
+
+# 火山引擎配置
+VOLCENGINE_API_KEY=${currentConfig.volcengine.apiKey || 'your-volcengine-api-key-here'}
+VOLCENGINE_MODEL=${currentConfig.volcengine.model || 'doubao-vision-pro-32k'}
+VOLCENGINE_BASE_URL=${currentConfig.volcengine.baseUrl || 'https://ark.cn-beijing.volces.com/api/v3'}
+
+# 帧提取配置
+FRAME_INTERVAL=${document.getElementById('frameInterval').value}
+`;
+
+      downloadFile(envContent, '.env', 'text/plain');
+      alert('✅ .env配置文件已下载！\n\n下次可以通过"📁 导入.env文件"按钮快速加载配置。');
+    });
+
+    // 解析.env文件
+    function parseEnvFile(text) {
+      const config = {};
+      const lines = text.split('\n');
+      
+      for (const line of lines) {
+        // 跳过注释和空行
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        
+        // 解析键值对
+        const equalIndex = trimmed.indexOf('=');
+        if (equalIndex === -1) continue;
+        
+        const key = trimmed.substring(0, equalIndex).trim();
+        let value = trimmed.substring(equalIndex + 1).trim();
+        
+        // 移除引号
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.substring(1, value.length - 1);
+        }
+        
+        config[key] = value;
+      }
+      
+      return config;
+    }
+
+    // 加载保存的配置
+    function loadSavedConfig() {
+      const saved = localStorage.getItem('videoAnalyzerConfig');
+      if (saved) {
+        const config = JSON.parse(saved);
+        apiProvider.value = config.provider || 'qwen';
+        apiProvider.dispatchEvent(new Event('change'));
+
+        if (config.qwen) {
+          document.getElementById('qwenApiKey').value = config.qwen.apiKey || '';
+          document.getElementById('qwenModel').value = config.qwen.model || 'qwen-vl-max';
+          document.getElementById('qwenBaseUrl').value = config.qwen.baseUrl || '';
+        }
+        if (config.volcengine) {
+          document.getElementById('volcengineApiKey').value = config.volcengine.apiKey || '';
+          document.getElementById('volcengineModel').value = config.volcengine.model || '';
+          document.getElementById('volcengineBaseUrl').value = config.volcengine.baseUrl || '';
+        }
+      }
+    }
+
+    // 获取当前配置
+    function getAPIConfig() {
+      const provider = apiProvider.value;
+      return {
+        provider: provider,
+        qwen: {
+          apiKey: document.getElementById('qwenApiKey').value,
+          model: document.getElementById('qwenModel').value,
+          baseUrl: document.getElementById('qwenBaseUrl').value
+        },
+        volcengine: {
+          apiKey: document.getElementById('volcengineApiKey').value,
+          model: document.getElementById('volcengineModel').value,
+          baseUrl: document.getElementById('volcengineBaseUrl').value
+        }
+      };
+    }
+
+    // 开始分析
+    analyzeBtn.addEventListener('click', async () => {
+      if (!videoInput.files[0]) {
+        alert('请先选择视频文件！');
+        return;
+      }
+
+      const config = getAPIConfig();
+      const provider = config.provider;
+      
+      let apiKey, model, baseUrl;
+      if (provider === 'qwen') {
+        apiKey = config.qwen.apiKey;
+        model = config.qwen.model;
+        baseUrl = config.qwen.baseUrl;
+      } else if (provider === 'volcengine') {
+        apiKey = config.volcengine.apiKey;
+        model = config.volcengine.model;
+        baseUrl = config.volcengine.baseUrl;
+      }
+
+      if (!apiKey) {
+        alert('请填写API Key！');
+        return;
+      }
+
+      analyzeBtn.disabled = true;
+      progressSection.style.display = 'block';
+      results.style.display = 'none';
+      analysisResults = [];
+      processingStartTime = Date.now();
+
+      try {
+        // 提取视频帧
+        updateProgress(0, '正在提取视频帧...', 0, 0);
+        const frames = await extractFrames();
+        
+        if (frames.length === 0) {
+          throw new Error('未能提取到视频帧');
+        }
+
+        console.log(`成功提取 ${frames.length} 帧`);
+
+        // AI分析每一帧
+        const totalFrames = frames.length;
+        for (let i = 0; i < frames.length; i++) {
+          const currentFrame = i + 1;
+          const percent = ((currentFrame - 1) / totalFrames) * 100;
+          
+          // 计算预计剩余时间
+          const elapsed = (Date.now() - processingStartTime) / 1000;
+          const avgTimePerFrame = elapsed / currentFrame;
+          const remainingFrames = totalFrames - currentFrame;
+          const remainingSeconds = avgTimePerFrame * remainingFrames;
+
+          updateProgress(
+            percent,
+            `正在分析第 ${currentFrame}/${totalFrames} 帧`,
+            currentFrame,
+            totalFrames,
+            remainingSeconds
+          );
+          
+          try {
+            const prompt = await analyzeFrame(frames[i].dataUrl, { provider, apiKey, model, baseUrl });
+            analysisResults.push({
+              frameNumber: i + 1,
+              timestamp: frames[i].timestamp,
+              dataUrl: frames[i].dataUrl,
+              prompt: prompt,
+              sceneNumber: frames[i].sceneNumber,  // 智能分镜编号
+              quality: frames[i].quality           // 画面质量分数
+            });
+            console.log(`帧 ${i + 1} 分析完成`);
+          } catch (error) {
+            console.error(`帧 ${i + 1} 分析失败:`, error);
+            analysisResults.push({
+              frameNumber: i + 1,
+              timestamp: frames[i].timestamp,
+              dataUrl: frames[i].dataUrl,
+              prompt: `分析失败: ${error.message}`,
+              sceneNumber: frames[i].sceneNumber,
+              quality: frames[i].quality
+            });
+          }
+        }
+
+        updateProgress(100, '分析完成！', totalFrames, totalFrames, 0);
+        setTimeout(() => displayResults(), 500);
+
+      } catch (error) {
+        console.error('处理错误:', error);
+        alert('处理失败: ' + error.message);
+      } finally {
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    // 提取视频帧
+    async function extractFrames() {
+      return new Promise((resolve, reject) => {
+        const file = videoInput.files[0];
+        const mode = document.getElementById('extractMode').value;
+        const frames = [];
+
+        videoPreview.src = URL.createObjectURL(file);
+
+        videoPreview.onloadedmetadata = () => {
+          const duration = videoPreview.duration;
+          
+          if (mode === 'fixed') {
+            // 固定间隔模式
+            extractFramesFixed(duration, frames, resolve, reject);
+          } else {
+            // 智能分镜模式
+            extractFramesSmart(duration, frames, resolve, reject);
+          }
+        };
+      });
+    }
+
+    // 固定间隔模式提取
+    function extractFramesFixed(duration, frames, resolve, reject) {
+      const frameInterval = parseFloat(document.getElementById('frameInterval').value);
+      const frameCount = Math.floor(duration / frameInterval);
+      let currentFrameIndex = 0;
+
+      const captureFrame = () => {
+        if (currentFrameIndex >= frameCount) {
+          resolve(frames);
+          return;
+        }
+
+        const timestamp = currentFrameIndex * frameInterval;
+        videoPreview.currentTime = timestamp;
+      };
+
+      videoPreview.onseeked = () => {
+        canvas.width = videoPreview.videoWidth;
+        canvas.height = videoPreview.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoPreview, 0, 0);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        frames.push({
+          timestamp: videoPreview.currentTime,
+          dataUrl: dataUrl,
+          frameIndex: currentFrameIndex
+        });
+
+        currentFrameIndex++;
+        captureFrame();
+      };
+
+      videoPreview.onerror = () => reject(new Error('视频加载失败'));
+      captureFrame();
+    }
+
+    // 智能分镜模式提取
+    function extractFramesSmart(duration, frames, resolve, reject) {
+      const sensitivity = document.getElementById('sceneSensitivity').value;
+      const qualityThreshold = parseFloat(document.getElementById('qualityThreshold').value);
+      const minInterval = parseFloat(document.getElementById('minSceneInterval').value);
+      
+      // 敏感度对应的变化阈值
+      const changeThresholds = {
+        low: 35,
+        medium: 25,
+        high: 15
+      };
+      const changeThreshold = changeThresholds[sensitivity];
+      
+      // 采样间隔（秒）- 用于检测镜头变化
+      const sampleInterval = 0.5;
+      const totalSamples = Math.floor(duration / sampleInterval);
+      
+      let currentSampleIndex = 0;
+      let previousFrameData = null;
+      let lastCapturedTime = -minInterval;
+      let sceneCount = 0;
+
+      const processSample = () => {
+        if (currentSampleIndex >= totalSamples) {
+          console.log(`智能分镜完成: 共提取 ${frames.length} 个分镜`);
+          resolve(frames);
+          return;
+        }
+
+        const timestamp = currentSampleIndex * sampleInterval;
+        videoPreview.currentTime = timestamp;
+      };
+
+      videoPreview.onseeked = () => {
+        canvas.width = videoPreview.videoWidth;
+        canvas.height = videoPreview.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoPreview, 0, 0);
+
+        // 获取当前帧的图像数据
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // 计算画面质量分数
+        const quality = calculateFrameQuality(imageData);
+        
+        // 判断是否应该捕获这一帧
+        let shouldCapture = false;
+        let reason = '';
+
+        if (quality < qualityThreshold) {
+          // 质量太低，跳过（全黑、全白、模糊等）
+          reason = '质量过低';
+        } else if (previousFrameData === null) {
+          // 第一帧，直接捕获
+          shouldCapture = true;
+          reason = '首帧';
+        } else {
+          // 计算与前一帧的差异
+          const difference = calculateFrameDifference(previousFrameData, imageData);
+          
+          // 检测镜头切换
+          if (difference > changeThreshold) {
+            const timeSinceLastCapture = videoPreview.currentTime - lastCapturedTime;
+            
+            if (timeSinceLastCapture >= minInterval) {
+              shouldCapture = true;
+              reason = `镜头切换 (差异: ${difference.toFixed(1)}%)`;
+            } else {
+              reason = `间隔太近 (${timeSinceLastCapture.toFixed(1)}s)`;
+            }
+          }
+        }
+
+        // 捕获帧
+        if (shouldCapture) {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          sceneCount++;
+          
+          frames.push({
+            timestamp: videoPreview.currentTime,
+            dataUrl: dataUrl,
+            frameIndex: currentSampleIndex,
+            sceneNumber: sceneCount,
+            quality: quality,
+            reason: reason
+          });
+
+          lastCapturedTime = videoPreview.currentTime;
+          previousFrameData = imageData;
+          
+          console.log(`✓ 分镜${sceneCount} @ ${formatTime(videoPreview.currentTime)} - ${reason}, 质量: ${quality.toFixed(1)}`);
+        } else {
+          // console.log(`✗ 跳过 @ ${formatTime(videoPreview.currentTime)} - ${reason}, 质量: ${quality.toFixed(1)}`);
+        }
+
+        currentSampleIndex++;
+        processSample();
+      };
+
+      videoPreview.onerror = () => reject(new Error('视频加载失败'));
+      processSample();
+    }
+
+    // 计算画面质量分数（0-100）
+    function calculateFrameQuality(imageData) {
+      const data = imageData.data;
+      const pixels = data.length / 4;
+      
+      let brightness = 0;
+      let variance = 0;
+      let edgeCount = 0;
+      
+      // 计算平均亮度
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        brightness += luma;
+      }
+      brightness /= pixels;
+      
+      // 检测全黑或全白
+      if (brightness < 10) return 0; // 全黑
+      if (brightness > 245) return 0; // 全白
+      
+      // 计算亮度方差（内容丰富度）
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        variance += Math.pow(luma - brightness, 2);
+      }
+      variance = Math.sqrt(variance / pixels);
+      
+      // 简单边缘检测（每隔10个像素采样）
+      const width = imageData.width;
+      for (let i = 0; i < data.length - width * 4 - 4; i += 40) {
+        const current = data[i];
+        const right = data[i + 4];
+        const down = data[i + width * 4];
+        
+        if (Math.abs(current - right) > 30 || Math.abs(current - down) > 30) {
+          edgeCount++;
+        }
+      }
+      
+      // 综合评分
+      const varianceScore = Math.min(variance / 80 * 50, 50); // 方差贡献50分
+      const edgeScore = Math.min(edgeCount / 100 * 50, 50);   // 边缘贡献50分
+      
+      return varianceScore + edgeScore;
+    }
+
+    // 计算两帧之间的差异（百分比）
+    function calculateFrameDifference(imageData1, imageData2) {
+      const data1 = imageData1.data;
+      const data2 = imageData2.data;
+      
+      let totalDifference = 0;
+      const sampleRate = 10; // 每隔10个像素采样，提高性能
+      
+      for (let i = 0; i < data1.length; i += 4 * sampleRate) {
+        const r1 = data1[i];
+        const g1 = data1[i + 1];
+        const b1 = data1[i + 2];
+        
+        const r2 = data2[i];
+        const g2 = data2[i + 1];
+        const b2 = data2[i + 2];
+        
+        const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+        totalDifference += diff;
+      }
+      
+      const samples = data1.length / 4 / sampleRate;
+      const avgDifference = totalDifference / samples;
+      
+      // 归一化到0-100
+      return (avgDifference / (255 * 3)) * 100;
+    }
+
+    // 格式化时间显示
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 10);
+      return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
+    }
+
+    // AI分析单帧
+    async function analyzeFrame(imageDataUrl, config) {
+      if (config.provider === 'qwen') {
+        return await analyzeWithQwen(imageDataUrl, config);
+      } else if (config.provider === 'volcengine') {
+        return await analyzeWithVolcEngine(imageDataUrl, config);
+      }
+      throw new Error('不支持的AI平台');
+    }
+
+    // 千问分析
+    async function analyzeWithQwen(imageDataUrl, config) {
+      try {
+        // 判断是使用官方API还是自建API
+        const isCustomEndpoint = config.baseUrl && config.baseUrl.trim() !== '';
+        
+        let response, data;
+        
+        if (isCustomEndpoint) {
+          // 自建API - 使用OpenAI兼容格式
+          response = await fetch(config.baseUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${config.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: config.model,
+              messages: [
+                {
+                  role: 'system',
+                  content: '你是一个专业的视觉分析专家。'
+                },
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'image_url',
+                      image_url: { url: imageDataUrl }
+                    },
+                    {
+                      type: 'text',
+                      text: '请详细分析这个画面，输出【中文版】和【英文版】两个版本，用于AI视频/图片生成。格式如下：\n\n=== 中文版 ===\n\n【文生图提示词】\n详细描述场景、人物、服饰、动作、光线、色彩、氛围、构图、视角等，用专业摄影术语\n\n【动效提示词】\n描述画面中的动态元素：人物表情变化、肢体微动作、头发/衣物飘动、眼神转移、呼吸起伏、环境元素（雨/雪/光影）变化等。例如："眼神缓缓从近处移向远方，目光逐渐变得空灵悠远，轻轻叹息，嘴唇微微开合，发丝随风轻扬飘动，耳饰微微摇晃，深呼吸起伏，雪花从眼前缓缓飘过，5秒渐变循环"\n\n【基础参数】\nresolution=3840x2160, fps=60, duration=5s, stabilization=3\n\n【运镜控制】\ntype=[推进push_in/拉远zoom_out/左旋pan_left/右旋pan_right/上摇tilt_up/下摇tilt_down/平移track/固定static/环绕orbit], speed=[0.5-2.0], focus_point=(x,y), angle=[角度], scale=[缩放]\n\n【画面约束】\nfov=[视场角]°, motion_blur=[0-1], target_ratio=[主体占比]%, depth_of_field=[0-1]\n\n=== 英文版 ===\n\n【Image Generation Prompt】\nDetailed scene description in English...\n\n【Motion Effect Prompt】\nDescribe dynamic elements in English...\n\n【Technical Parameters】\nresolution=3840x2160, fps=60, duration=5s, stabilization=3\n\n【Camera Control】\ntype=[push_in/zoom_out/pan_left/pan_right/tilt_up/tilt_down/track/static/orbit], speed=[0.5-2.0], focus_point=(x,y), angle=[degrees], scale=[zoom]\n\n【Visual Constraints】\nfov=[degrees]°, motion_blur=[0-1], target_ratio=[percent]%, depth_of_field=[0-1]'
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 2000,
+              temperature: 0.7
+            })
+          });
+
+          data = await response.json();
+          console.log('千问自建API响应:', data);
+
+          if (data.choices && data.choices[0]) {
+            return data.choices[0].message.content;
+          }
+        } else {
+          // 官方API - 使用千问原生格式
+          response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${config.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: config.model,
+              input: {
+                messages: [
+                  {
+                    role: 'user',
+                    content: [
+                      { image: imageDataUrl },
+                      { text: '请详细分析这个画面，输出【中文版】和【英文版】两个版本，用于AI视频/图片生成。格式如下：\n\n=== 中文版 ===\n\n【文生图提示词】\n详细描述场景、人物、服饰、动作、光线、色彩、氛围、构图、视角等，用专业摄影术语\n\n【动效提示词】\n描述画面中的动态元素：人物表情变化、肢体微动作、头发/衣物飘动、眼神转移、呼吸起伏、环境元素（雨/雪/光影）变化等。例如："眼神缓缓从近处移向远方，目光逐渐变得空灵悠远，轻轻叹息，嘴唇微微开合，发丝随风轻扬飘动，耳饰微微摇晃，深呼吸起伏，雪花从眼前缓缓飘过，5秒渐变循环"\n\n【基础参数】\nresolution=3840x2160, fps=60, duration=5s, stabilization=3\n\n【运镜控制】\ntype=[推进push_in/拉远zoom_out/左旋pan_left/右旋pan_right/上摇tilt_up/下摇tilt_down/平移track/固定static/环绕orbit], speed=[0.5-2.0], focus_point=(x,y), angle=[角度], scale=[缩放]\n\n【画面约束】\nfov=[视场角]°, motion_blur=[0-1], target_ratio=[主体占比]%, depth_of_field=[0-1]\n\n=== 英文版 ===\n\n【Image Generation Prompt】\nDetailed scene description in English...\n\n【Motion Effect Prompt】\nDescribe dynamic elements in English...\n\n【Technical Parameters】\nresolution=3840x2160, fps=60, duration=5s, stabilization=3\n\n【Camera Control】\ntype=[push_in/zoom_out/pan_left/pan_right/tilt_up/tilt_down/track/static/orbit], speed=[0.5-2.0], focus_point=(x,y), angle=[degrees], scale=[zoom]\n\n【Visual Constraints】\nfov=[degrees]°, motion_blur=[0-1], target_ratio=[percent]%, depth_of_field=[0-1]' }
+                    ]
+                  }
+                ]
+              },
+              parameters: {
+                max_tokens: 1000
+              }
+            })
+          });
+
+          data = await response.json();
+          console.log('千问官方API响应:', data);
+
+          if (data.output && data.output.choices && data.output.choices[0]) {
+            const content = data.output.choices[0].message.content;
+            // 处理不同的content格式
+            if (Array.isArray(content)) {
+              return content.find(item => item.text)?.text || '无法获取分析结果';
+            } else if (typeof content === 'string') {
+              return content;
+            }
+          }
+        }
+
+        throw new Error(data.error?.message || data.message || '千问API返回格式错误');
+      } catch (error) {
+        // 检测CORS错误
+        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+          document.getElementById('corsWarning').style.display = 'block';
+          document.getElementById('corsWarning').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          throw new Error('CORS跨域错误：请通过HTTP服务器运行此页面（见上方黄色提示框）');
+        }
+        throw error;
+      }
+    }
+
+    // 火山引擎分析
+    async function analyzeWithVolcEngine(imageDataUrl, config) {
+      try {
+        const response = await fetch(`${config.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: config.model,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: { url: imageDataUrl }
+                  },
+                  {
+                    type: 'text',
+                    text: '请详细分析这个画面，输出【中文版】和【英文版】两个版本，用于AI视频/图片生成。格式如下：\n\n=== 中文版 ===\n\n【文生图提示词】\n详细描述场景、人物、服饰、动作、光线、色彩、氛围、构图、视角等，用专业摄影术语\n\n【动效提示词】\n描述画面中的动态元素：人物表情变化、肢体微动作、头发/衣物飘动、眼神转移、呼吸起伏、环境元素（雨/雪/光影）变化等。例如："眼神缓缓从近处移向远方，目光逐渐变得空灵悠远，轻轻叹息，嘴唇微微开合，发丝随风轻扬飘动，耳饰微微摇晃，深呼吸起伏，雪花从眼前缓缓飘过，5秒渐变循环"\n\n【基础参数】\nresolution=3840x2160, fps=60, duration=5s, stabilization=3\n\n【运镜控制】\ntype=[推进push_in/拉远zoom_out/左旋pan_left/右旋pan_right/上摇tilt_up/下摇tilt_down/平移track/固定static/环绕orbit], speed=[0.5-2.0], focus_point=(x,y), angle=[角度], scale=[缩放]\n\n【画面约束】\nfov=[视场角]°, motion_blur=[0-1], target_ratio=[主体占比]%, depth_of_field=[0-1]\n\n=== 英文版 ===\n\n【Image Generation Prompt】\nDetailed scene description in English...\n\n【Motion Effect Prompt】\nDescribe dynamic elements in English...\n\n【Technical Parameters】\nresolution=3840x2160, fps=60, duration=5s, stabilization=3\n\n【Camera Control】\ntype=[push_in/zoom_out/pan_left/pan_right/tilt_up/tilt_down/track/static/orbit], speed=[0.5-2.0], focus_point=(x,y), angle=[degrees], scale=[zoom]\n\n【Visual Constraints】\nfov=[degrees]°, motion_blur=[0-1], target_ratio=[percent]%, depth_of_field=[0-1]'
+                  }
+                ]
+              }
+            ],
+            max_tokens: 1000,
+            temperature: 0.7
+          })
+        });
+
+        const data = await response.json();
+        console.log('火山引擎API响应:', data);
+
+        if (data.choices && data.choices[0]) {
+          return data.choices[0].message.content;
+        }
+
+        throw new Error(data.error?.message || '火山引擎API返回格式错误');
+      } catch (error) {
+        // 检测CORS错误
+        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+          document.getElementById('corsWarning').style.display = 'block';
+          document.getElementById('corsWarning').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          throw new Error('CORS跨域错误：请通过HTTP服务器运行此页面（见上方黄色提示框）');
+        }
+        throw error;
+      }
+    }
+
+    // 更新进度
+    function updateProgress(percent, status, current = 0, total = 0, remainingSeconds = null) {
+      progressBarFill.style.width = percent + '%';
+      document.getElementById('progressPercent').textContent = percent.toFixed(1) + '%';
+      document.getElementById('progressStatus').textContent = status;
+      
+      if (total > 0) {
+        document.getElementById('progressDetail').textContent = `已完成 ${current}/${total} 帧`;
+      }
+      
+      if (remainingSeconds !== null && remainingSeconds > 0) {
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = Math.floor(remainingSeconds % 60);
+        if (minutes > 0) {
+          document.getElementById('progressTime').textContent = `预计剩余: ${minutes}分${seconds}秒`;
+        } else {
+          document.getElementById('progressTime').textContent = `预计剩余: ${seconds}秒`;
+        }
+      } else if (percent >= 100) {
+        const totalTime = (Date.now() - processingStartTime) / 1000;
+        const minutes = Math.floor(totalTime / 60);
+        const seconds = Math.floor(totalTime % 60);
+        document.getElementById('progressTime').textContent = `总耗时: ${minutes}分${seconds}秒`;
+      }
+    }
+
+    // 显示结果
+    function displayResults() {
+      resultsContainer.innerHTML = '';
+      const mode = document.getElementById('extractMode').value;
+      
+      analysisResults.forEach((item, index) => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'result-item';
+        
+        const minutes = Math.floor(item.timestamp / 60);
+        const seconds = Math.floor(item.timestamp % 60);
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        const promptId = `prompt-${index}`;
+        const isLongText = item.prompt.length > 200;
+        
+        // 根据模式显示不同的标题
+        let titleHtml = '';
+        if (mode === 'smart' && item.sceneNumber) {
+          titleHtml = `<h3>🎬 分镜 ${item.sceneNumber}</h3>`;
+          if (item.quality) {
+            titleHtml += `<div class="timestamp">质量评分: ${item.quality.toFixed(1)} | 时间: ${timeStr}</div>`;
+          } else {
+            titleHtml += `<div class="timestamp">时间: ${timeStr}</div>`;
+          }
+        } else {
+          titleHtml = `<h3>帧 #${item.frameNumber}</h3>
+                      <div class="timestamp">时间: ${timeStr}</div>`;
+        }
+        
+        resultItem.innerHTML = `
+          <div class="result-item-inner">
+            <div class="result-item-image">
+              <img src="${item.dataUrl}" alt="Frame ${item.frameNumber}">
+            </div>
+            <div class="result-content">
+              ${titleHtml}
+              <div class="prompt">
+                <button class="copy-prompt-btn" onclick="copyPrompt(${index}, this)">📋 复制</button>
+                <strong>AI生成提示词：</strong><br>
+                <div class="prompt-text ${isLongText ? 'collapsed' : 'expanded'}" id="${promptId}">${item.prompt}</div>
+                ${isLongText ? `<span class="expand-btn" onclick="togglePrompt('${promptId}', this)">▼ 展开完整内容</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+        
+        resultsContainer.appendChild(resultItem);
+      });
+
+      results.style.display = 'block';
+      progressSection.style.display = 'none';
+      results.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 导出TXT
+    exportTxtBtn.addEventListener('click', () => {
+      const mode = document.getElementById('extractMode').value;
+      let content = '视频分析结果\n';
+      content += '=' .repeat(50) + '\n';
+      content += `提取模式: ${mode === 'smart' ? '智能分镜' : '固定间隔'}\n`;
+      content += `总帧数: ${analysisResults.length}\n`;
+      content += '=' .repeat(50) + '\n\n';
+      
+      analysisResults.forEach(item => {
+        const minutes = Math.floor(item.timestamp / 60);
+        const seconds = Math.floor(item.timestamp % 60);
+        
+        if (mode === 'smart' && item.sceneNumber) {
+          content += `🎬 分镜 ${item.sceneNumber} (${minutes}:${seconds.toString().padStart(2, '0')})\n`;
+          if (item.quality) {
+            content += `质量评分: ${item.quality.toFixed(1)}\n`;
+          }
+        } else {
+          content += `帧 #${item.frameNumber} (${minutes}:${seconds.toString().padStart(2, '0')})\n`;
+        }
+        content += '-'.repeat(50) + '\n';
+        content += item.prompt + '\n\n';
+      });
+
+      downloadFile(content, 'video-analysis.txt', 'text/plain');
+    });
+
+    // 导出JSON
+    exportJsonBtn.addEventListener('click', () => {
+      const jsonData = JSON.stringify(analysisResults, null, 2);
+      downloadFile(jsonData, 'video-analysis.json', 'application/json');
+    });
+
+    // 复制全部
+    copyAllBtn.addEventListener('click', () => {
+      let content = '';
+      analysisResults.forEach(item => {
+        const minutes = Math.floor(item.timestamp / 60);
+        const seconds = Math.floor(item.timestamp % 60);
+        content += `帧 #${item.frameNumber} (${minutes}:${seconds.toString().padStart(2, '0')})\n${item.prompt}\n\n`;
+      });
+
+      navigator.clipboard.writeText(content).then(() => {
+        alert('✅ 已复制到剪贴板！');
+      });
+    });
+
+    // 下载文件
+    function downloadFile(content, filename, type) {
+      const blob = new Blob([content], { type: type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 切换提示词展开/收起
+    function togglePrompt(promptId, button) {
+      const promptElement = document.getElementById(promptId);
+      const isCollapsed = promptElement.classList.contains('collapsed');
+      
+      if (isCollapsed) {
+        promptElement.classList.remove('collapsed');
+        promptElement.classList.add('expanded');
+        button.innerHTML = '▲ 收起';
+      } else {
+        promptElement.classList.remove('expanded');
+        promptElement.classList.add('collapsed');
+        button.innerHTML = '▼ 展开更多';
+      }
+    }
+
+    // 复制单个prompt
+    function copyPrompt(index, button) {
+      const prompt = analysisResults[index].prompt;
+      
+      navigator.clipboard.writeText(prompt).then(() => {
+        // 修改按钮文字和样式
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ 已复制';
+        button.classList.add('copied');
+        
+        // 2秒后恢复
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      }).catch(err => {
+        console.error('复制失败:', err);
+        alert('复制失败，请手动选择文本复制');
+      });
+    }
+  </script>
+</body>
+</html>
