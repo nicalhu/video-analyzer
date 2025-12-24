@@ -1,20 +1,12 @@
 {
   "version": 2,
   "name": "video-analyzer",
-  "builds": [
+  "rewrites": [
     {
-      "src": "视频分析工具-独立版.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/视频分析工具-独立版.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/",
+      "destination": "/视频分析工具-独立版.html"
     }
   ]
 }
+
+
