@@ -6,7 +6,12 @@
       "source": "/",
       "destination": "/视频分析工具-独立版.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
 }
 
 
