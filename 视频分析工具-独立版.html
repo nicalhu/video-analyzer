@@ -1175,18 +1175,46 @@ FRAME_INTERVAL=${document.getElementById('frameInterval').value}
       return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
     }
 
-    // AI分析单帧
+    // AI分析单帧 - 使用Vercel API代理
     async function analyzeFrame(imageDataUrl, config) {
-      if (config.provider === 'qwen') {
-        return await analyzeWithQwen(imageDataUrl, config);
-      } else if (config.provider === 'volcengine') {
-        return await analyzeWithVolcEngine(imageDataUrl, config);
+      try {
+        // 使用Vercel Serverless Function作为API代理
+        const apiEndpoint = '/api/analyze';
+        
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            provider: config.provider,
+            imageDataUrl: imageDataUrl,
+            apiKey: config.apiKey,
+            model: config.model,
+            baseUrl: config.baseUrl
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `API调用失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.content) {
+          return data.content;
+        }
+
+        throw new Error(data.error || 'API返回格式错误');
+      } catch (error) {
+        console.error('API调用错误:', error);
+        throw error;
       }
-      throw new Error('不支持的AI平台');
     }
 
-    // 千问分析
-    async function analyzeWithQwen(imageDataUrl, config) {
+    // 千问分析(已废弃,现使用API代理)
+    async function analyzeWithQwen_DEPRECATED(imageDataUrl, config) {
       try {
         // 判断是使用官方API还是自建API
         const isCustomEndpoint = config.baseUrl && config.baseUrl.trim() !== '';
@@ -1286,8 +1314,8 @@ FRAME_INTERVAL=${document.getElementById('frameInterval').value}
       }
     }
 
-    // 火山引擎分析
-    async function analyzeWithVolcEngine(imageDataUrl, config) {
+    // 火山引擎分析(已废弃,现使用API代理)
+    async function analyzeWithVolcEngine_DEPRECATED(imageDataUrl, config) {
       try {
         const response = await fetch(`${config.baseUrl}/chat/completions`, {
           method: 'POST',
