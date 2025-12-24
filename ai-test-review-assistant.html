@@ -1,0 +1,3025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI智能测试用例评审助手</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --primary-light: #818CF8;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-dark: #1E1B4B;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --text-dark: #1F2937;
+            --text-light: #6B7280;
+            --border: #E5E7EB;
+            --card-bg: #FFFFFF;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-gradient);
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 14px;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 20px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            min-height: calc(100vh - 180px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* File Upload */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #F9FAFB;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .upload-text {
+            color: var(--text-dark);
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            color: var(--text-light);
+            font-size: 12px;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 12px;
+            background: #F0FDF4;
+            border-radius: 8px;
+            border-left: 4px solid var(--success);
+        }
+
+        .file-info-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .file-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .file-info-label {
+            color: var(--text-light);
+        }
+
+        .file-info-value {
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .file-status {
+            color: var(--success);
+        }
+
+        /* Quick Review */
+        .review-btn {
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: white;
+        }
+
+        .review-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .review-btn.boundary {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+
+        .review-btn.ambiguity {
+            background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+        }
+
+        .review-btn.format {
+            background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+        }
+
+        .review-btn.custom {
+            background: linear-gradient(135deg, #EC4899 0%, #F472B6 100%);
+        }
+
+        .review-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .review-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Chat Area */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
+            min-height: 500px;
+            max-height: calc(100vh - 380px);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message-user .message-content {
+            background: var(--bg-gradient);
+            color: white;
+            border-radius: 16px 16px 4px 16px;
+            max-width: 70%;
+        }
+
+        .message-ai {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-ai .message-content {
+            background: white;
+            color: var(--text-dark);
+            border-radius: 16px 16px 16px 4px;
+            max-width: 85%;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .message-content {
+            padding: 14px 18px;
+            font-size: 14px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message-ai .message-content strong {
+            color: var(--primary);
+        }
+
+        /* Chat Input */
+        .chat-input-container {
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 48px;
+            max-height: 150px;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 12px;
+            background: var(--bg-gradient);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            padding: 10px 20px;
+            background: #F8FAFC;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.disconnected {
+            background: var(--danger);
+        }
+
+        .status-dot.loading {
+            background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            background: var(--bg-gradient);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-close:hover {
+            opacity: 1;
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(80vh - 140px);
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            background: #F9FAFB;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: #F3F4F6;
+            color: var(--text-dark);
+        }
+
+        .btn-secondary:hover {
+            background: #E5E7EB;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Review Type List */
+        .review-type-item {
+            padding: 16px;
+            background: #F9FAFB;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .review-type-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .review-type-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .review-type-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .review-type-name .default-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
+        }
+
+        .review-type-desc {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .review-type-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .review-type-actions .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Help Content */
+        .help-section {
+            margin-bottom: 24px;
+        }
+
+        .help-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .help-section h4 {
+            color: var(--primary);
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .help-section ul {
+            padding-left: 20px;
+            color: var(--text-dark);
+        }
+
+        .help-section li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        /* Loading */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 14px 18px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            background: #1F2937;
+            color: white;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 2000;
+            animation: toastIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        .toast.warning {
+            background: var(--warning);
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        @keyframes toastIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                order: 2;
+            }
+
+            .chat-container {
+                order: 1;
+            }
+
+            .chat-messages {
+                min-height: 400px;
+                max-height: 50vh;
+            }
+        }
+
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #F1F1F1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #C1C1C1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A1A1A1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>🤖 AI智能用例评审系统</h1>
+        <p>支持 DeepSeek 和 千问(Qianwen) 的智能测试用例评审助手</p>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <button class="toolbar-btn" onclick="showModal('apiModal')">🔑 API配置</button>
+        <button class="toolbar-btn" onclick="showModal('reviewTypesModal')">📋 快速评审配置管理</button>
+        <button class="toolbar-btn" onclick="downloadExcelTemplate()">📥 下载Excel模板</button>
+        <button class="toolbar-btn" onclick="exportChat()">📤 导出对话</button>
+        <button class="toolbar-btn" onclick="clearChat()">🗑️ 清空对话</button>
+        <button class="toolbar-btn" onclick="showModal('helpModal')">💡 帮助</button>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- File Upload -->
+            <div class="card">
+                <div class="card-title">📁 文件上传</div>
+                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">点击选择或拖拽文件到此处</div>
+                    <div class="upload-hint">支持 .txt、.xmind 和 .xlsx/.xls 格式</div>
+                </div>
+                <input type="file" id="fileInput" accept=".txt,.xmind,.xml,.xlsx,.xls" onchange="handleFileSelect(event)">
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件名：</span>
+                        <span class="file-info-value" id="fileName"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">大小：</span>
+                        <span class="file-info-value" id="fileSize"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">状态：</span>
+                        <span class="file-info-value file-status" id="fileStatus">✓ 已加载</span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">内容：</span>
+                        <span class="file-info-value" id="fileContentLength"></span>
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 6px; font-size: 12px; max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #E5E7EB;">
+                        <div style="color: #6B7280; margin-bottom: 5px; font-weight: 500;">📄 内容预览：</div>
+                        <div id="fileContentPreview" style="color: #1F2937; line-height: 1.5;"></div>
+                    </div>
+                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                        <button onclick="changeFile()" style="flex: 1; padding: 8px 12px; border: 2px solid #6366F1; background: white; color: #6366F1; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                            🔄 更换文件
+                        </button>
+                        <button onclick="clearCurrentFile()" style="flex: 1; padding: 8px 12px; border: 2px solid #EF4444; background: white; color: #EF4444; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                            🗑️ 清除文件
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Review -->
+            <div class="card">
+                <div class="card-title">⚡ 快速评审</div>
+                <div id="quickReviewButtons">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message message-ai">
+                    <div class="message-content">
+👋 <strong>欢迎使用AI智能测试用例评审助手！</strong>
+
+我可以帮助您：
+• 📄 分析上传的测试用例文件（.txt、.xmind 或 .xlsx/.xls）
+• 🔍 进行边界值评审、二义性检查、格式规范化检查
+• 💬 回答关于测试用例的任何问题
+
+<strong>快速开始：</strong>
+1. 点击「🔑 API配置」配置您的 API Key（支持 DeepSeek 或 千问）
+2. 上传测试用例文件
+3. 选择快速评审类型或直接输入问题
+
+有什么我可以帮助您的吗？</div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <textarea class="chat-input" id="chatInput" placeholder="输入您的问题或评审要求..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+            </div>
+
+            <div class="status-bar">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">服务状态: 未配置API Key</span>
+                <span style="margin-left: auto; display: flex; align-items: center; gap: 15px;">
+                    <span id="fileStatusBar"></span>
+                    <select class="form-select" id="activeModelSelect" style="padding: 4px 8px; font-size: 12px; width: auto; border: 1px solid #D1D5DB;" onchange="updateActiveModel()">
+                        <option value="deepseek">🔵 DeepSeek</option>
+                        <option value="qianwen">🟣 千问</option>
+                    </select>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Config Modal -->
+    <div class="modal-overlay" id="apiModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🔑 API配置</h3>
+                <button class="modal-close" onclick="closeModal('apiModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="background: #F0F9FF; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #0369A1;">💡 配置说明</h4>
+                    <p style="margin: 0; font-size: 13px; color: #475569;">请分别配置 DeepSeek 和千问的 API Key，评审时可以选择使用哪个模型</p>
+                </div>
+
+                <!-- DeepSeek 配置 -->
+                <div style="border: 2px solid #E0E7FF; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 18px;">🔵</span>
+                        <h4 style="margin: 0; font-size: 15px; color: #4F46E5;">DeepSeek API</h4>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">API Key</label>
+                        <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx">
+                        <div class="form-hint">获取地址: <a href="https://platform.deepseek.com" target="_blank">https://platform.deepseek.com</a></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">默认模型</label>
+                        <select class="form-select" id="deepseekModel">
+                            <option value="deepseek-chat">deepseek-chat V3.1 (最新通用模型)</option>
+                            <option value="deepseek-reasoner">deepseek-reasoner (推理增强)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 千问配置 -->
+                <div style="border: 2px solid #DBEAFE; border-radius: 12px; padding: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 18px;">🟣</span>
+                        <h4 style="margin: 0; font-size: 15px; color: #7C3AED;">千问 (Qianwen) API</h4>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">API 端点</label>
+                        <input type="text" class="form-input" id="qianwenApiUrl" value="http://43.173.153.29:11436/v1/chat/completions">
+                        <div class="form-hint">默认: http://43.173.153.29:11436/v1/chat/completions (你的服务器)</div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">API Key</label>
+                        <input type="password" class="form-input" id="qianwenApiKey" placeholder="xxx">
+                        <div class="form-hint">请输入你的 API Key</div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">默认模型</label>
+                        <input type="text" class="form-input" id="qianwenModel" value="Qwen3-32B-AWQ">
+                        <div class="form-hint">默认: Qwen3-32B-AWQ | 其他可选: qwen-max, qwen-plus, qwen-long</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="testConnection('deepseek')">🔗 测试 DeepSeek</button>
+                <button class="btn btn-secondary" onclick="testConnection('qianwen')">🔗 测试千问</button>
+                <button class="btn btn-primary" onclick="saveApiConfig()">💾 保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Types Modal -->
+    <div class="modal-overlay" id="reviewTypesModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>📋 快速评审配置管理</h3>
+                <button class="modal-close" onclick="closeModal('reviewTypesModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="showAddReviewType()">✨ 新建评审类型</button>
+                    <button class="btn btn-secondary" onclick="resetDefaultTypes()">🔄 重置默认类型</button>
+                    <button class="btn btn-secondary" onclick="exportConfig()">📤 导出配置</button>
+                    <button class="btn btn-secondary" onclick="importConfig()">📥 导入配置</button>
+                </div>
+                <div id="reviewTypesList">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('reviewTypesModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Review Type Modal -->
+    <div class="modal-overlay" id="editTypeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="editTypeTitle">✨ 新建评审类型</h3>
+                <button class="modal-close" onclick="closeModal('editTypeModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">评审类型名称</label>
+                    <input type="text" class="form-input" id="typeNameInput" placeholder="例如：性能测试评审">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">图标 (Emoji)</label>
+                    <input type="text" class="form-input" id="typeIconInput" placeholder="例如：🚀" style="width: 100px;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">描述</label>
+                    <input type="text" class="form-input" id="typeDescInput" placeholder="简短描述该评审类型的用途">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prompt 模板</label>
+                    <textarea class="form-input form-textarea" id="typePromptInput" placeholder="输入评审时使用的 Prompt..."></textarea>
+                    <div class="form-hint">使用 {content} 作为测试用例内容的占位符</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">按钮颜色</label>
+                    <select class="form-select" id="typeColorInput">
+                        <option value="boundary">紫色 (边界值)</option>
+                        <option value="ambiguity">绿色 (二义性)</option>
+                        <option value="format">橙色 (格式)</option>
+                        <option value="custom">粉色 (自定义)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('editTypeModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveReviewType()">💾 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💡 帮助</h3>
+                <button class="modal-close" onclick="closeModal('helpModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h4>🚀 快速开始</h4>
+                    <ul>
+                        <li>首先配置 DeepSeek 或 千问 API Key</li>
+                        <li>上传测试用例文件（.txt、.xmind 或 .xlsx/.xls 格式）</li>
+                        <li>选择快速评审类型或直接对话</li>
+                        <li>查看 AI 生成的评审建议</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4>📋 支持的文件格式</h4>
+                    <ul>
+                        <li><strong>.txt</strong> - 纯文本格式的测试用例</li>
+                        <li><strong>.xmind</strong> - XMind 思维导图格式</li>
+                        <li><strong>.xlsx / .xls</strong> - Excel 表格格式
+                            <ul style="margin-top: 5px;">
+                                <li>📥 点击"下载Excel模板"获取标准模板</li>
+                                <li>📊 上传后需配置字段映射关系</li>
+                                <li>⚠️ 必须包含：前置条件、操作步骤、预期结果</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4>⚡ 快速评审类型</h4>
+                    <ul>
+                        <li><strong>边界值评审</strong> - 检查边界值测试的完整性</li>
+                        <li><strong>二义性检查</strong> - 识别用例描述中的歧义</li>
+                        <li><strong>格式规范化检查</strong> - 验证用例格式规范性</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4>💡 使用技巧</h4>
+                    <ul>
+                        <li>📥 <strong>Excel 用户</strong>：先下载模板，按模板格式编写用例</li>
+                        <li>📊 <strong>自定义 Excel</strong>：上传后在弹窗中配置字段映射</li>
+                        <li>🔧 可以自定义评审类型和提示词</li>
+                        <li>📤 支持导出和导入评审配置</li>
+                        <li>💾 可以导出完整的对话记录</li>
+                        <li>💬 支持连续对话和上下文理解</li>
+                        <li>🔄 同一文件可进行多种类型的连续评审</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('helpModal')">知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel 字段映射配置弹窗 -->
+    <div class="modal-overlay" id="excelMappingModal">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📊 Excel 字段映射配置</h3>
+                <button class="modal-close" onclick="closeModal('excelMappingModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: #FEF3C7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #F59E0B;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 20px;">⚠️</span>
+                        <strong style="color: #92400E;">重要说明</strong>
+                    </div>
+                    <p style="margin: 0; font-size: 13px; color: #78350F;">
+                        请将 Excel 表格中的列映射到对应的用例字段。<br>
+                        <strong style="color: #D97706;">前置条件、操作步骤、预期结果</strong> 为必选字段，必须映射！
+                    </p>
+                </div>
+
+                <div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="font-size: 13px; color: #6B7280; margin-bottom: 10px;">
+                        📄 文件名: <strong id="excelFileName" style="color: #1F2937;"></strong>
+                    </div>
+                    <div style="font-size: 13px; color: #6B7280;">
+                        📋 检测到的列: <strong id="excelHeaderCount" style="color: #1F2937;"></strong>
+                    </div>
+                </div>
+
+                <div id="fieldMappingContainer" style="display: grid; gap: 16px;">
+                    <!-- 动态生成字段映射选择器 -->
+                </div>
+
+                <div style="margin-top: 20px; padding: 12px; background: #EFF6FF; border-radius: 8px; border-left: 4px solid #3B82F6;">
+                    <div style="font-size: 13px; color: #1E40AF;">
+                        💡 <strong>提示：</strong>如果某个字段在您的 Excel 中不存在，可以选择"不映射"
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('excelMappingModal')">取消</button>
+                <button class="btn btn-primary" onclick="confirmExcelMapping()">✅ 确认映射并解析</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置和状态 ====================
+        const CONFIG_KEY = 'ai_review_config';
+        const REVIEW_TYPES_KEY = 'ai_review_types';
+        const CHAT_HISTORY_KEY = 'ai_chat_history';
+
+        let currentFile = null;
+        let fileContent = '';
+        let chatHistory = [];
+        let editingTypeId = null;
+        let activeModel = 'deepseek'; // 当前激活的模型
+        let currentFileReviewHistory = []; // 当前文件的评审历史 [{typeId, typeName, timestamp}]
+        let excelRawData = null; // Excel 原始数据 {headers: [], rows: []}
+        let excelFieldMapping = null; // Excel 字段映射配置
+        
+        // 模型的 token 限制配置（字符数近似值）
+        const MODEL_LIMITS = {
+            'deepseek-chat': 32000,      // DeepSeek Chat 支持 32K tokens
+            'deepseek-reasoner': 32000,  
+            'qwen-max': 28000,           // 千问 max 支持约 30K tokens，保守估计 28K
+            'qwen-plus': 28000,
+            'qwen-turbo': 6000,          // 千问 turbo 支持 8K tokens，保守估计 6K
+            'qwen-long': 1000000         // 千问 long 支持超长文本
+        };
+
+        // 默认评审类型
+        const DEFAULT_REVIEW_TYPES = [
+            {
+                id: 'boundary',
+                name: '边界值评审',
+                icon: '📊',
+                desc: '全面的边界值测试评审',
+                color: 'boundary',
+                isDefault: true,
+                prompt: `你是一位资深的测试工程师,专注于边界值测试分析。
+
+**重要说明:** 测试用例可能以 XMind 思维导图大纲格式提供,包含层级结构的节点标题。请将层级关系理解为:一级节点=功能模块,二级节点=测试场景,三级节点=测试步骤/预期结果。即使描述简略,也请基于结构层次给出专业评审。
+
+请对以下测试用例进行边界值评审,重点关注:
+
+1. **边界值覆盖完整性**
+   - 是否覆盖了所有输入参数的边界值
+   - 最小值、最大值、临界值是否都有测试
+   - 边界值的上下浮动是否考虑
+
+2. **边界条件识别**
+   - 数值型边界(最大/最小/零值)
+   - 字符串边界(空串/最大长度/特殊字符)
+   - 集合边界(空集/单元素/满容量)
+   - 时间边界(起始/结束/跨越)
+
+3. **遗漏的边界场景**
+   - 列出可能遗漏的边界测试点
+   - 给出补充建议
+
+测试用例内容:
+{content}
+
+请用清晰的结构化格式给出评审结果。务必明确指出测试用例的名称和具体内容。`
+            },
+            {
+                id: 'ambiguity',
+                name: '二义性检查',
+                icon: '🔍',
+                desc: '检查用例描述的二义性问题',
+                color: 'ambiguity',
+                isDefault: true,
+                prompt: `你是一位专业的测试用例评审专家,专注于识别测试用例中的二义性问题。
+
+**重要说明:** 测试用例可能以 XMind 思维导图大纲格式提供,包含层级结构的节点标题。请将层级关系理解为测试用例的组织结构,即使描述简略,也请基于上下文给出专业评审。
+
+请对以下测试用例进行二义性检查,重点关注:
+
+1. **模糊词汇识别**
+   - "大约"、"左右"、"适当"等模糊表述
+   - "正常"、"合理"、"有效"等未定义标准
+   - "等等"、"类似"等不完整描述
+
+2. **歧义表述分析**
+   - 可能有多种理解的描述
+   - 缺少具体数值或标准的地方
+   - 主观判断而非客观标准
+
+3. **改进建议**
+   - 针对每个问题给出具体的修改建议
+   - 提供明确、可测量的替代表述
+
+测试用例内容:
+{content}
+
+请列出所有发现的二义性问题,并给出改进建议。务必明确指出问题所在的具体测试用例。`
+            },
+            {
+                id: 'format',
+                name: '格式规范化检查',
+                icon: '📝',
+                desc: '检查用例格式的规范性',
+                color: 'format',
+                isDefault: true,
+                prompt: `你是一位测试用例规范化专家,负责检查测试用例的格式规范性。
+
+**重要说明:** 测试用例可能以 XMind 思维导图大纲格式提供,包含层级结构的节点标题。请将层级关系理解为测试用例的组织方式,基于这种大纲结构评估其规范性。
+
+请对以下测试用例进行格式规范化检查,评估以下方面:
+
+1. **用例结构完整性**
+   - 用例编号/标识
+   - 用例标题
+   - 前置条件
+   - 测试步骤
+   - 预期结果
+   - 优先级/重要性
+
+2. **描述规范性**
+   - 步骤是否清晰、可执行
+   - 预期结果是否明确、可验证
+   - 是否使用了标准术语
+
+3. **格式一致性**
+   - 编号格式是否统一
+   - 描述风格是否一致
+   - 层级结构是否清晰
+
+4. **改进建议**
+   - 缺失的必要元素
+   - 需要规范化的内容
+   - 格式优化建议
+
+测试用例内容:
+{content}
+
+请给出详细的格式规范化评审报告,明确指出具体的问题测试用例。`
+            }
+        ];
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            loadReviewTypes();
+            loadChatHistory();
+            setupDragDrop();
+            updateStatus();
+            renderQuickReviewButtons();
+            
+            // 加载上次选择的模型,默认使用千问
+            const savedModel = localStorage.getItem('activeModel') || 'qianwen';
+            activeModel = savedModel;
+            document.getElementById('activeModelSelect').value = savedModel;
+        });
+
+        // ==================== 配置管理 ====================
+        function loadConfig() {
+            const config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+            
+            // 加载 DeepSeek 配置
+            if (config.deepseek) {
+                document.getElementById('deepseekApiKey').value = config.deepseek.apiKey || '';
+                document.getElementById('deepseekModel').value = config.deepseek.model || 'deepseek-chat';
+            }
+            
+            // 加载千问配置
+            if (config.qianwen) {
+                document.getElementById('qianwenApiUrl').value = config.qianwen.apiUrl || 'http://43.173.153.29:11436/v1/chat/completions';
+                document.getElementById('qianwenApiKey').value = config.qianwen.apiKey || '';
+                document.getElementById('qianwenModel').value = config.qianwen.model || 'Qwen3-32B-AWQ';
+            } else {
+                // 设置默认值为你的千问 API
+                document.getElementById('qianwenApiUrl').value = 'http://43.173.153.29:11436/v1/chat/completions';
+                document.getElementById('qianwenModel').value = 'Qwen3-32B-AWQ';
+            }
+        }
+
+        function saveApiConfig() {
+            const deepseekApiKey = document.getElementById('deepseekApiKey').value.trim();
+            const deepseekModel = document.getElementById('deepseekModel').value;
+            const qianwenApiUrl = document.getElementById('qianwenApiUrl').value.trim();
+            const qianwenApiKey = document.getElementById('qianwenApiKey').value.trim();
+            const qianwenModel = document.getElementById('qianwenModel').value.trim();
+
+            if (!deepseekApiKey && !qianwenApiKey) {
+                showToast('请至少配置一个 API Key', 'error');
+                return;
+            }
+
+            const config = {
+                deepseek: {
+                    apiKey: deepseekApiKey,
+                    model: deepseekModel
+                },
+                qianwen: {
+                    apiUrl: qianwenApiUrl || 'http://43.173.153.29:11436/v1/chat/completions',
+                    apiKey: qianwenApiKey,
+                    model: qianwenModel || 'Qwen3-32B-AWQ'
+                }
+            };
+
+            localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            
+            showToast('配置保存成功！', 'success');
+            closeModal('apiModal');
+            updateStatus();
+        }
+
+        function getConfig() {
+            return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+        }
+
+        function updateActiveModel() {
+            activeModel = document.getElementById('activeModelSelect').value;
+            localStorage.setItem('activeModel', activeModel);
+            
+            const config = getConfig();
+            const modelName = activeModel === 'deepseek' 
+                ? (config.deepseek?.model || 'deepseek-chat')
+                : (config.qianwen?.model || 'qwen-max');
+            
+            showToast(`已切换到 ${activeModel === 'deepseek' ? '🔵 DeepSeek' : '🟣 千问'} (${modelName})`, 'success');
+        }
+
+        // ==================== 评审类型管理 ====================
+        function loadReviewTypes() {
+            let types = JSON.parse(localStorage.getItem(REVIEW_TYPES_KEY) || 'null');
+            if (!types) {
+                types = DEFAULT_REVIEW_TYPES;
+                localStorage.setItem(REVIEW_TYPES_KEY, JSON.stringify(types));
+            }
+            return types;
+        }
+
+        function saveReviewTypes(types) {
+            localStorage.setItem(REVIEW_TYPES_KEY, JSON.stringify(types));
+            renderQuickReviewButtons();
+            renderReviewTypesList();
+        }
+
+        function renderQuickReviewButtons() {
+            const types = loadReviewTypes();
+            const container = document.getElementById('quickReviewButtons');
+            
+            container.innerHTML = types.map(type => `
+                <button class="review-btn ${type.color}" onclick="quickReview('${type.id}')" ${!fileContent ? 'disabled' : ''}>
+                    ${type.icon} ${type.name}
+                </button>
+            `).join('');
+        }
+
+        function renderReviewTypesList() {
+            const types = loadReviewTypes();
+            const container = document.getElementById('reviewTypesList');
+            
+            container.innerHTML = types.map(type => `
+                <div class="review-type-item">
+                    <div class="review-type-header">
+                        <div class="review-type-name">
+                            ${type.icon} ${type.name}
+                            ${type.isDefault ? '<span class="default-badge">默认</span>' : ''}
+                        </div>
+                        <div class="review-type-actions">
+                            <button class="btn btn-secondary" onclick="editReviewType('${type.id}')">✏️ 编辑</button>
+                            <button class="btn btn-danger" onclick="deleteReviewType('${type.id}')">🗑️ 删除</button>
+                        </div>
+                    </div>
+                    <div class="review-type-desc">${type.desc}</div>
+                </div>
+            `).join('');
+        }
+
+        function showAddReviewType() {
+            editingTypeId = null;
+            document.getElementById('editTypeTitle').textContent = '✨ 新建评审类型';
+            document.getElementById('typeNameInput').value = '';
+            document.getElementById('typeIconInput').value = '🔧';
+            document.getElementById('typeDescInput').value = '';
+            document.getElementById('typePromptInput').value = '';
+            document.getElementById('typeColorInput').value = 'custom';
+            showModal('editTypeModal');
+        }
+
+        function editReviewType(id) {
+            const types = loadReviewTypes();
+            const type = types.find(t => t.id === id);
+            if (!type) return;
+
+            editingTypeId = id;
+            document.getElementById('editTypeTitle').textContent = '✏️ 编辑评审类型';
+            document.getElementById('typeNameInput').value = type.name;
+            document.getElementById('typeIconInput').value = type.icon;
+            document.getElementById('typeDescInput').value = type.desc;
+            document.getElementById('typePromptInput').value = type.prompt;
+            document.getElementById('typeColorInput').value = type.color;
+            showModal('editTypeModal');
+        }
+
+        function saveReviewType() {
+            const name = document.getElementById('typeNameInput').value.trim();
+            const icon = document.getElementById('typeIconInput').value.trim() || '🔧';
+            const desc = document.getElementById('typeDescInput').value.trim();
+            const prompt = document.getElementById('typePromptInput').value.trim();
+            const color = document.getElementById('typeColorInput').value;
+
+            if (!name || !prompt) {
+                showToast('请填写名称和 Prompt', 'error');
+                return;
+            }
+
+            const types = loadReviewTypes();
+
+            if (editingTypeId) {
+                const index = types.findIndex(t => t.id === editingTypeId);
+                if (index !== -1) {
+                    types[index] = { ...types[index], name, icon, desc, prompt, color };
+                }
+            } else {
+                types.push({
+                    id: 'custom_' + Date.now(),
+                    name,
+                    icon,
+                    desc,
+                    prompt,
+                    color,
+                    isDefault: false
+                });
+            }
+
+            saveReviewTypes(types);
+            closeModal('editTypeModal');
+            showToast('保存成功！', 'success');
+        }
+
+        function deleteReviewType(id) {
+            if (!confirm('确定要删除这个评审类型吗？')) return;
+
+            const types = loadReviewTypes();
+            const filtered = types.filter(t => t.id !== id);
+            saveReviewTypes(filtered);
+            showToast('已删除', 'success');
+        }
+
+        function resetDefaultTypes() {
+            if (!confirm('确定要重置为默认评审类型吗？这将覆盖所有自定义类型。')) return;
+            
+            saveReviewTypes(DEFAULT_REVIEW_TYPES);
+            showToast('已重置为默认类型', 'success');
+        }
+
+        function exportConfig() {
+            const types = loadReviewTypes();
+            const blob = new Blob([JSON.stringify(types, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'review-types-config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('配置已导出', 'success');
+        }
+
+        function importConfig() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const text = await file.text();
+                    const types = JSON.parse(text);
+                    if (Array.isArray(types)) {
+                        saveReviewTypes(types);
+                        showToast('配置导入成功！', 'success');
+                    } else {
+                        throw new Error('无效的配置格式');
+                    }
+                } catch (err) {
+                    showToast('导入失败：' + err.message, 'error');
+                }
+            };
+            input.click();
+        }
+
+        // ==================== 文件处理 ====================
+        function setupDragDrop() {
+            const zone = document.getElementById('uploadZone');
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    processFile(files[0]);
+                }
+            });
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        async function processFile(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (!['txt', 'xmind', 'xml', 'xlsx', 'xls'].includes(ext)) {
+                showToast('不支持的文件格式，请上传 .txt、.xmind 或 .xlsx/.xls 文件', 'error');
+                return;
+            }
+
+            currentFile = file;
+            currentFileReviewHistory = []; // 重置评审历史
+            
+            try {
+                if (ext === 'txt' || ext === 'xml') {
+                    fileContent = await file.text();
+                } else if (ext === 'xmind') {
+                    fileContent = await parseXMind(file);
+                } else if (ext === 'xlsx' || ext === 'xls') {
+                    // Excel 文件需要先配置字段映射
+                    await parseExcel(file);
+                    // parseExcel 会弹出配置窗口，用户确认后会设置 fileContent
+                    // 这里直接返回，等待用户配置
+                    return;
+                }
+
+                // 验证文件内容
+                if (!fileContent || fileContent.trim() === '') {
+                    throw new Error('文件内容为空，请检查文件格式');
+                }
+
+                console.log('文件解析成功，内容长度:', fileContent.length);
+                console.log('文件内容预览:', fileContent.substring(0, 200));
+
+                // 显示文件信息
+                document.getElementById('fileInfo').style.display = 'block';
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = formatFileSize(file.size);
+                document.getElementById('fileStatus').textContent = '✓ 已加载';
+                document.getElementById('fileContentLength').textContent = `${fileContent.length} 个字符`;
+                
+                // 显示内容预览（前300个字符）
+                const preview = fileContent.substring(0, 300);
+                document.getElementById('fileContentPreview').textContent = preview + (fileContent.length > 300 ? '\n...' : '');
+
+                // 更新状态栏
+                document.getElementById('fileStatusBar').textContent = `文件: ${file.name} (${fileContent.length}字符)`;
+
+                // 启用快速评审按钮
+                renderQuickReviewButtons();
+
+                showToast(`文件加载成功！解析到 ${fileContent.length} 个字符`, 'success');
+            } catch (err) {
+                console.error('文件解析错误:', err);
+                showToast('文件解析失败：' + err.message, 'error');
+                fileContent = '';
+            }
+        }
+
+        async function parseXMind(file) {
+            try {
+                const zip = await JSZip.loadAsync(file);
+                console.log('XMind 文件结构:', Object.keys(zip.files));
+                
+                // 尝试读取 content.json (新版 XMind)
+                let contentFile = zip.file('content.json');
+                if (contentFile) {
+                    console.log('找到 content.json');
+                    const content = await contentFile.async('string');
+                    const data = JSON.parse(content);
+                    const result = extractXMindContent(data);
+                    console.log('content.json 解析结果长度:', result.length);
+                    return result;
+                }
+
+                // 尝试读取 content.xml (旧版 XMind)
+                contentFile = zip.file('content.xml');
+                if (contentFile) {
+                    console.log('找到 content.xml');
+                    const content = await contentFile.async('string');
+                    const result = parseXMindXML(content);
+                    console.log('content.xml 解析结果长度:', result.length);
+                    return result;
+                }
+
+                throw new Error('无法找到 XMind 内容文件 (content.json 或 content.xml)');
+            } catch (err) {
+                console.error('XMind 解析错误:', err);
+                throw new Error('XMind 解析失败：' + err.message);
+            }
+        }
+
+        function extractXMindContent(data, level = 0) {
+            let result = '';
+            
+            if (Array.isArray(data)) {
+                for (const item of data) {
+                    result += extractXMindContent(item, level);
+                }
+            } else if (typeof data === 'object' && data !== null) {
+                if (data.title) {
+                    const indent = '  '.repeat(level);
+                    let line = '';
+                    
+                    // 根据层级添加不同格式
+                    if (level === 0) {
+                        line = `\n【模块】${data.title}\n` + '─'.repeat(40) + '\n';
+                    } else if (level === 1) {
+                        line = `\n${indent}▶ ${data.title}\n`;
+                    } else {
+                        line = `${indent}  • ${data.title}\n`;
+                    }
+                    
+                    // 提取备注
+                    if (data.notes && data.notes.plain) {
+                        const noteText = data.notes.plain.content || data.notes.plain;
+                        if (noteText && noteText.trim()) {
+                            line += `${indent}     📝 ${noteText.trim()}\n`;
+                        }
+                    }
+                    
+                    // 提取标签
+                    if (data.labels && Array.isArray(data.labels)) {
+                        const labelTexts = data.labels.join(', ');
+                        line += `${indent}     🏷️ ${labelTexts}\n`;
+                    }
+                    
+                    result += line;
+                }
+                
+                if (data.rootTopic) {
+                    result += extractXMindContent(data.rootTopic, level);
+                }
+                
+                if (data.children) {
+                    if (data.children.attached) {
+                        for (const child of data.children.attached) {
+                            result += extractXMindContent(child, level + 1);
+                        }
+                    }
+                }
+            }
+            
+            return result;
+        }
+
+        function parseXMindXML(xmlString) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlString, 'text/xml');
+            
+            // 检查解析错误
+            const parserError = doc.querySelector('parsererror');
+            if (parserError) {
+                console.error('[XMind] XML解析错误:', parserError.textContent);
+                throw new Error('XML 格式错误');
+            }
+            
+            let result = '';
+            let moduleCount = 0;
+            const topics = doc.querySelectorAll('topic');
+            
+            console.log('[XMind] 找到 topic 节点数量:', topics.length);
+            
+            topics.forEach((topic, index) => {
+                const title = topic.querySelector(':scope > title');
+                if (!title) return;
+                
+                const depth = getTopicDepth(topic);
+                const titleText = title.textContent.trim();
+                const indent = '  '.repeat(depth);
+                
+                // 根据层级添加不同的格式
+                if (depth === 0) {
+                    moduleCount++;
+                    result += `\n【模块 ${moduleCount}】${titleText}\n`;
+                    result += '─'.repeat(40) + '\n';
+                } else if (depth === 1) {
+                    result += `\n${indent}▶ ${titleText}\n`;
+                } else {
+                    result += `${indent}  • ${titleText}\n`;
+                }
+                
+                // 提取备注信息
+                const notes = topic.querySelector(':scope > notes');
+                if (notes) {
+                    const plainNotes = notes.querySelector('plain');
+                    if (plainNotes) {
+                        const noteText = plainNotes.textContent.trim();
+                        if (noteText) {
+                            result += `${indent}     📝 ${noteText}\n`;
+                        }
+                    }
+                }
+                
+                // 提取标签
+                const labels = topic.querySelectorAll(':scope > labels > label');
+                if (labels.length > 0) {
+                    const labelTexts = Array.from(labels).map(l => l.textContent.trim()).join(', ');
+                    result += `${indent}     🏷️ ${labelTexts}\n`;
+                }
+            });
+            
+            if (!result) {
+                console.warn('[XMind] 未能从 XML 提取内容,返回原始文本');
+                return xmlString;
+            }
+            
+            // 添加统计信息
+            result += '\n' + '─'.repeat(40) + '\n';
+            result += `[统计] 共 ${topics.length} 个测试节点\n`;
+            
+            console.log('[XMind] XML解析完成,提取了', result.length, '个字符');
+            console.log('[XMind] 解析结果预览:', result.substring(0, 200));
+            
+            return result;
+        }
+
+        function getTopicDepth(element) {
+            let depth = 0;
+            let parent = element.parentElement;
+            while (parent) {
+                if (parent.tagName === 'topic') depth++;
+                parent = parent.parentElement;
+            }
+            return depth;
+        }
+
+        // ==================== Excel 解析 ====================
+        async function parseExcel(file) {
+            try {
+                console.log('[Excel] 开始解析 Excel 文件:', file.name);
+                
+                // 读取文件为 ArrayBuffer
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // 使用 SheetJS 解析
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                console.log('[Excel] 工作簿信息:', {
+                    sheetNames: workbook.SheetNames,
+                    sheetCount: workbook.SheetNames.length
+                });
+                
+                // 只处理第一个工作表
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // 转换为 JSON 格式 (保留空单元格)
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+                    header: 1,  // 使用数组格式
+                    defval: ''  // 空单元格默认值
+                });
+                
+                if (jsonData.length === 0) {
+                    throw new Error('Excel 文件为空');
+                }
+                
+                console.log(`[Excel] 工作表 "${firstSheetName}" 有 ${jsonData.length} 行`);
+                
+                // 智能识别表头
+                const headerInfo = identifyHeaders(jsonData);
+                
+                if (headerInfo.rowIndex === -1) {
+                    throw new Error('未能识别到有效的表头行，请确保 Excel 文件包含标准的用例表头');
+                }
+                
+                const headers = jsonData[headerInfo.rowIndex];
+                const dataRows = jsonData.slice(headerInfo.rowIndex + 1);
+                
+                // 过滤掉完全空的行
+                const validRows = dataRows.filter(row => {
+                    return row.some(cell => cell && cell.toString().trim() !== '');
+                });
+                
+                console.log(`[Excel] 识别到表头 (第${headerInfo.rowIndex + 1}行):`, headers);
+                console.log(`[Excel] 有效数据行: ${validRows.length}`);
+                
+                // 保存原始数据
+                excelRawData = {
+                    fileName: file.name,
+                    headers: headers,
+                    rows: validRows
+                };
+                
+                // 弹出字段映射配置窗口
+                showExcelMappingModal();
+                
+                // 返回空字符串，等待用户配置映射后再生成内容
+                return '';
+                
+            } catch (err) {
+                console.error('[Excel] 解析错误:', err);
+                throw new Error('Excel 解析失败：' + err.message);
+            }
+        }
+
+        // 智能识别表头
+        function identifyHeaders(jsonData) {
+            if (jsonData.length === 0) return { rowIndex: -1, headers: [] };
+            
+            // 常见的测试用例表头关键词
+            const headerKeywords = [
+                '用例编号', '用例ID', 'ID', '编号', 'Case ID', 'Test Case ID',
+                '用例名称', '用例标题', '测试点', '功能点', 'Title', 'Name', 'Case Name',
+                '前置条件', '前提条件', 'Precondition', 'Pre-condition',
+                '测试步骤', '操作步骤', 'Steps', 'Test Steps',
+                '预期结果', '期望结果', 'Expected Result', 'Expected',
+                '优先级', 'Priority', 'Level',
+                '测试类型', 'Type', 'Category',
+                '备注', '说明', 'Remark', 'Note', 'Description'
+            ];
+            
+            // 检查前5行
+            for (let i = 0; i < Math.min(5, jsonData.length); i++) {
+                const row = jsonData[i];
+                let matchCount = 0;
+                
+                for (const cell of row) {
+                    if (!cell) continue;
+                    const cellStr = cell.toString().trim();
+                    
+                    for (const keyword of headerKeywords) {
+                        if (cellStr.includes(keyword) || keyword.includes(cellStr)) {
+                            matchCount++;
+                            break;
+                        }
+                    }
+                }
+                
+                // 如果有3个以上匹配，认为是表头
+                if (matchCount >= 3) {
+                    console.log(`[Excel] 在第${i + 1}行找到表头，匹配度: ${matchCount}`);
+                    return { rowIndex: i, headers: row };
+                }
+                
+                // 或者非空单元格超过一半都是文字且较短（可能是表头）
+                const nonEmptyCells = row.filter(c => c && c.toString().trim());
+                if (nonEmptyCells.length >= 3) {
+                    const shortTextCount = nonEmptyCells.filter(c => {
+                        const str = c.toString();
+                        return str.length > 0 && str.length < 20 && /[\u4e00-\u9fa5a-zA-Z]/.test(str);
+                    }).length;
+                    
+                    if (shortTextCount >= nonEmptyCells.length * 0.6) {
+                        console.log(`[Excel] 在第${i + 1}行可能是表头 (文本特征)`);
+                        return { rowIndex: i, headers: row };
+                    }
+                }
+            }
+            
+            return { rowIndex: -1, headers: [] };
+        }
+
+        // 格式化测试用例行
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // ==================== Excel 字段映射配置 ====================
+        function showExcelMappingModal() {
+            if (!excelRawData) return;
+            
+            // 更新文件信息
+            document.getElementById('excelFileName').textContent = excelRawData.fileName;
+            document.getElementById('excelHeaderCount').textContent = `${excelRawData.headers.length} 列`;
+            
+            // 生成字段映射选择器
+            const container = document.getElementById('fieldMappingContainer');
+            
+            // 定义用例字段（顺序和重要性）
+            const caseFields = [
+                { id: 'precondition', name: '前置条件', icon: '⚙️', required: true, keywords: ['前置条件', '前提条件', 'Precondition', 'Pre-condition', '前置'] },
+                { id: 'steps', name: '操作步骤', icon: '📝', required: true, keywords: ['测试步骤', '操作步骤', 'Steps', 'Test Steps', '步骤'] },
+                { id: 'expected', name: '预期结果', icon: '✅', required: true, keywords: ['预期结果', '期望结果', 'Expected Result', 'Expected', '预期', '结果'] },
+                { id: 'module', name: '功能模块', icon: '📦', required: false, keywords: ['功能模块', '模块', 'Module', '功能'] },
+                { id: 'submodule', name: '子模块', icon: '📁', required: false, keywords: ['子模块', 'Sub Module', '子功能'] },
+                { id: 'description', name: '用例描述', icon: '📋', required: false, keywords: ['用例描述', '用例名称', '用例标题', '描述', 'Description', 'Title', 'Name'] },
+                { id: 'caseid', name: '用例编号', icon: '🔖', required: false, keywords: ['用例编号', '用例ID', 'Case ID', 'ID', '编号'] },
+                { id: 'priority', name: '优先级', icon: '⭐', required: false, keywords: ['优先级', 'Priority', 'Level'] }
+            ];
+            
+            container.innerHTML = caseFields.map(field => {
+                // 智能匹配默认值
+                const matchedIndex = autoMatchField(field.keywords, excelRawData.headers);
+                
+                return `
+                    <div style="background: white; padding: 16px; border-radius: 10px; border: 2px solid ${field.required ? '#F59E0B' : '#E5E7EB'};">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <span style="font-size: 20px;">${field.icon}</span>
+                            <strong style="color: ${field.required ? '#D97706' : '#1F2937'}; font-size: 14px;">
+                                ${field.name}
+                                ${field.required ? '<span style="color: #EF4444; margin-left: 4px;">*</span>' : ''}
+                            </strong>
+                        </div>
+                        <select class="form-select field-mapping-select" data-field-id="${field.id}" data-required="${field.required}" style="font-size: 13px;">
+                            <option value="">不映射</option>
+                            ${excelRawData.headers.map((header, index) => `
+                                <option value="${index}" ${matchedIndex === index ? 'selected' : ''}>
+                                    ${header || '(空列' + (index + 1) + ')'}
+                                </option>
+                            `).join('')}
+                        </select>
+                        ${field.required ? '<div style="font-size: 11px; color: #DC2626; margin-top: 6px;">必选字段</div>' : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            showModal('excelMappingModal');
+        }
+        
+        // 智能匹配字段
+        function autoMatchField(keywords, headers) {
+            for (let i = 0; i < headers.length; i++) {
+                const header = (headers[i] || '').toString().trim();
+                for (const keyword of keywords) {
+                    if (header.includes(keyword) || keyword.includes(header)) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
+        
+        // 确认字段映射并生成内容
+        function confirmExcelMapping() {
+            const selects = document.querySelectorAll('.field-mapping-select');
+            const mapping = {};
+            
+            // 验证必选字段
+            const requiredFields = ['precondition', 'steps', 'expected'];
+            for (const fieldId of requiredFields) {
+                const select = document.querySelector(`[data-field-id="${fieldId}"]`);
+                const value = select.value;
+                if (!value || value === '') {
+                    showToast(`请选择必选字段：${select.closest('div').querySelector('strong').textContent.replace('*', '').trim()}`, 'error');
+                    return;
+                }
+                mapping[fieldId] = parseInt(value);
+            }
+            
+            // 收集其他字段
+            selects.forEach(select => {
+                const fieldId = select.dataset.fieldId;
+                const value = select.value;
+                if (value && value !== '' && !requiredFields.includes(fieldId)) {
+                    mapping[fieldId] = parseInt(value);
+                }
+            });
+            
+            console.log('[Excel] 字段映射:', mapping);
+            excelFieldMapping = mapping;
+            
+            // 生成格式化内容
+            const formattedContent = generateExcelContent();
+            
+            if (!formattedContent) {
+                showToast('生成内容失败', 'error');
+                return;
+            }
+            
+            fileContent = formattedContent;
+            
+            // 更新文件信息显示
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('fileName').textContent = excelRawData.fileName;
+            document.getElementById('fileSize').textContent = formatFileSize(currentFile.size);
+            document.getElementById('fileStatus').textContent = '✓ 已加载并配置';
+            document.getElementById('fileContentLength').textContent = `${fileContent.length} 个字符`;
+            
+            const preview = fileContent.substring(0, 300);
+            document.getElementById('fileContentPreview').textContent = preview + (fileContent.length > 300 ? '\n...' : '');
+            
+            document.getElementById('fileStatusBar').textContent = `文件: ${excelRawData.fileName} (${fileContent.length}字符)`;
+            
+            // 启用快速评审按钮
+            renderQuickReviewButtons();
+            
+            closeModal('excelMappingModal');
+            showToast(`Excel 解析成功！共 ${excelRawData.rows.length} 条用例`, 'success');
+        }
+        
+        // 生成格式化的 Excel 内容
+        function generateExcelContent() {
+            if (!excelRawData || !excelFieldMapping) return '';
+            
+            const { headers, rows } = excelRawData;
+            const mapping = excelFieldMapping;
+            
+            let result = `\n${'═'.repeat(60)}\n`;
+            result += `📊 Excel 测试用例文档\n`;
+            result += `${'═'.repeat(60)}\n\n`;
+            result += `📄 文件: ${excelRawData.fileName}\n`;
+            result += `📋 用例总数: ${rows.length}\n\n`;
+            
+            // 字段映射说明
+            result += `🔗 字段映射:\n`;
+            const fieldNames = {
+                precondition: '前置条件',
+                steps: '操作步骤',
+                expected: '预期结果',
+                module: '功能模块',
+                submodule: '子模块',
+                description: '用例描述',
+                caseid: '用例编号',
+                priority: '优先级'
+            };
+            
+            for (const [fieldId, colIndex] of Object.entries(mapping)) {
+                result += `  • ${fieldNames[fieldId]} ← ${headers[colIndex]}\n`;
+            }
+            
+            result += `\n${'-'.repeat(60)}\n\n`;
+            
+            // 遍历数据行
+            rows.forEach((row, index) => {
+                result += `【用例 ${index + 1}】\n`;
+                
+                // 按字段顺序输出
+                const orderedFields = ['caseid', 'module', 'submodule', 'description', 'precondition', 'steps', 'expected', 'priority'];
+                
+                orderedFields.forEach(fieldId => {
+                    if (mapping.hasOwnProperty(fieldId)) {
+                        const colIndex = mapping[fieldId];
+                        const value = row[colIndex] || '(无)';
+                        const icon = getFieldIcon(fieldId);
+                        result += `  ${icon} ${fieldNames[fieldId]}: ${value}\n`;
+                    }
+                });
+                
+                result += '\n';
+            });
+            
+            console.log('[Excel] 生成内容长度:', result.length);
+            return result;
+        }
+        
+        // 获取字段图标
+        function getFieldIcon(fieldId) {
+            const icons = {
+                caseid: '🔖',
+                module: '📦',
+                submodule: '📁',
+                description: '📋',
+                precondition: '⚙️',
+                steps: '📝',
+                expected: '✅',
+                priority: '⭐'
+            };
+            return icons[fieldId] || '•';
+        }
+        
+        // 下载 Excel 模板
+        function downloadExcelTemplate() {
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            
+            // 定义模板数据
+            const templateData = [
+                ['用例编号', '功能模块', '子模块', '用例描述', '前置条件', '操作步骤', '预期结果', '优先级'],
+                ['TC001', '登录模块', '账号密码登录', '正常登录测试', '用户已注册且账号状态正常', '1. 打开登录页面\n2. 输入正确的账号和密码\n3. 点击登录按钮', '成功登录并跳转到首页', '高'],
+                ['TC002', '登录模块', '账号密码登录', '账号为空', '无', '1. 打开登录页面\n2. 密码输入框输入密码\n3. 账号输入框保持为空\n4. 点击登录按钮', '提示"请输入账号"', '高'],
+                ['TC003', '登录模块', '账号密码登录', '密码为空', '无', '1. 打开登录页面\n2. 账号输入框输入账号\n3. 密码输入框保持为空\n4. 点击登录按钮', '提示"请输入密码"', '高'],
+                ['TC004', '登录模块', '账号密码登录', '密码错误', '用户已注册', '1. 打开登录页面\n2. 输入正确的账号\n3. 输入错误的密码\n4. 点击登录按钮', '提示"账号或密码错误"', '中'],
+                ['TC005', '登录模块', '账号密码登录', '账号不存在', '无', '1. 打开登录页面\n2. 输入未注册的账号\n3. 输入任意密码\n4. 点击登录按钮', '提示"账号不存在"', '中']
+            ];
+            
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet(templateData);
+            
+            // 设置列宽
+            ws['!cols'] = [
+                { wch: 12 },  // 用例编号
+                { wch: 12 },  // 功能模块
+                { wch: 15 },  // 子模块
+                { wch: 18 },  // 用例描述
+                { wch: 20 },  // 前置条件
+                { wch: 40 },  // 操作步骤
+                { wch: 30 },  // 预期结果
+                { wch: 10 }   // 优先级
+            ];
+            
+            // 添加工作表到工作簿
+            XLSX.utils.book_append_sheet(wb, ws, '测试用例');
+            
+            // 导出文件
+            XLSX.writeFile(wb, '测试用例模板.xlsx');
+            
+            showToast('Excel 模板下载成功！', 'success');
+        }
+
+        // ==================== 聊天功能 ====================
+        function loadChatHistory() {
+            chatHistory = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]');
+        }
+
+        function saveChatHistory() {
+            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+        }
+
+        function addMessage(role, content) {
+            chatHistory.push({ role, content, timestamp: new Date().toISOString() });
+            saveChatHistory();
+            renderMessage(role, content);
+        }
+        
+        // 添加系统消息(不保存到历史记录)
+        function addSystemMessage(content) {
+            renderMessage('ai', content);
+        }
+
+        function renderMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message message-${role}`;
+            messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const container = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message message-ai';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            const config = getConfig();
+            const currentConfig = activeModel === 'deepseek' ? config.deepseek : config.qianwen;
+            
+            if (!currentConfig?.apiKey) {
+                showToast(`请先配置 ${activeModel === 'deepseek' ? 'DeepSeek' : '千问'} API Key`, 'error');
+                showModal('apiModal');
+                return;
+            }
+
+            // 添加用户消息
+            addMessage('user', message);
+            input.value = '';
+            input.style.height = 'auto';
+
+            // 构建上下文
+            let contextMessage = message;
+            if (fileContent && !chatHistory.some(m => m.content.includes('测试用例内容：'))) {
+                contextMessage = `当前已上传的测试用例内容：\n${fileContent}\n\n用户问题：${message}`;
+            }
+
+            await callAI(contextMessage);
+        }
+
+        async function quickReview(typeId) {
+            if (!fileContent) {
+                showToast('请先上传测试用例文件', 'error');
+                return;
+            }
+
+            // 验证文件内容
+            if (!fileContent.trim()) {
+                showToast('文件内容为空，请重新上传文件', 'error');
+                return;
+            }
+
+            const config = getConfig();
+            const currentConfig = activeModel === 'deepseek' ? config.deepseek : config.qianwen;
+            
+            if (!currentConfig?.apiKey) {
+                showToast(`请先配置 ${activeModel === 'deepseek' ? 'DeepSeek' : '千问'} API Key`, 'error');
+                showModal('apiModal');
+                return;
+            }
+
+            const types = loadReviewTypes();
+            const type = types.find(t => t.id === typeId);
+            if (!type) return;
+
+            // 记录评审历史
+            currentFileReviewHistory.push({
+                typeId: typeId,
+                typeName: type.name,
+                timestamp: new Date().toISOString()
+            });
+            console.log('[快速评审] 当前文件评审历史:', currentFileReviewHistory);
+
+            // 添加用户消息
+            addMessage('user', `请进行「${type.name}」评审`);
+
+            // 包装文件内容 - 根据文件类型添加格式说明
+            let wrappedContent = fileContent;
+            let testCaseCount = 0; // 用例数量统计
+            
+            if (currentFile && currentFile.name.endsWith('.xmind')) {
+                // XMind 文件包装
+                wrappedContent = `# 📋 测试用例文档说明
+
+**文件来源:** XMind 思维导图 (${currentFile.name})
+**文件格式:** 层级结构大纲
+**解析方式:** 自动提取节点标题、备注、标签信息
+**内容类型:** 测试用例结构化描述
+
+⚠️ **重要提示:**
+这是一个真实的测试用例文档,虽然以大纲形式呈现,但包含了完整的测试场景层级结构。
+请将每个节点视为一个独立的测试点,根据层级关系理解测试用例的组织方式。
+
+═══════════════════════════════════════════════════════════
+📄 测试用例内容开始
+═══════════════════════════════════════════════════════════
+
+${fileContent}
+
+═══════════════════════════════════════════════════════════
+📄 测试用例内容结束 (共 ${fileContent.split('\n').filter(l => l.trim()).length} 个有效节点)
+═══════════════════════════════════════════════════════════
+
+💡 **评审要求:**
+1. 请将每个一级节点视为功能模块
+2. 将每个二级节点视为测试场景
+3. 将每个三级及以下节点视为具体的测试步骤或预期结果
+4. 基于这个结构层次,分析测试覆盖情况
+5. 指出遗漏的边界情况、异常场景和补充建议
+6. 即使某些节点描述简略,也请基于上下文给出专业判断
+
+请开始您的专业评审:`;
+            } else if (currentFile && (currentFile.name.endsWith('.xlsx') || currentFile.name.endsWith('.xls'))) {
+                // Excel 文件包装
+                testCaseCount = (fileContent.match(/【用例 \d+】/g) || []).length;
+                wrappedContent = `# 📋 测试用例文档说明
+
+**文件来源:** Excel 表格 (${currentFile.name})
+**文件格式:** 结构化表格
+**解析方式:** 自动识别表头和字段
+**内容类型:** 测试用例表格数据
+
+⚠️ **重要提示:**
+这是一个真实的测试用例文档,以表格形式组织。每个【用例】代表一条完整的测试用例,
+包含用例编号、名称、前置条件、测试步骤、预期结果等标准字段。
+
+═══════════════════════════════════════════════════════════
+📄 测试用例内容开始 (共 ${testCaseCount} 条用例)
+═══════════════════════════════════════════════════════════
+
+${fileContent}
+
+═══════════════════════════════════════════════════════════
+📄 测试用例内容结束
+═══════════════════════════════════════════════════════════
+
+💡 **评审要求:**
+1. 分析每条测试用例的完整性和规范性
+2. 检查测试步骤的清晰度和可执行性
+3. 验证预期结果的明确性和可验证性
+4. 评估测试覆盖的完整性
+5. 识别遗漏的边界情况、异常场景和特殊情况
+6. 给出具体的改进建议
+
+请开始您的专业评审:`;
+            }
+
+            // 构建 prompt - 确保文件内容正确替换
+            let prompt;
+            if (type.prompt.includes('{content}')) {
+                // 如果模板包含 {content} 占位符,进行替换
+                prompt = type.prompt.replace('{content}', wrappedContent);
+                console.log('[快速评审] ✓ 使用 {content} 占位符替换');
+            } else {
+                // 如果模板不包含 {content},则追加测试用例内容到末尾
+                prompt = type.prompt + '\n\n' + wrappedContent;
+                console.log('[快速评审] ⚠️ 模板中未找到 {content} 占位符,自动追加内容到末尾');
+            }
+            
+            console.log('[快速评审] 类型:', type.name);
+            console.log('[快速评审] 文件:', currentFile ? currentFile.name : '未知');
+            console.log('[快速评审] 原始内容长度:', fileContent.length);
+            console.log('[快速评审] 包装后内容长度:', wrappedContent.length);
+            console.log('[快速评审] 最终Prompt长度:', prompt.length);
+            console.log('[快速评审] Prompt中是否包含测试用例:', prompt.includes('GBM') || prompt.includes('PNT') || prompt.includes(fileContent.substring(0, 50)));
+            console.log('[快速评审] 内容预览:', wrappedContent.substring(0, 300));
+            
+            // 检查内容长度，判断是否需要分批处理
+            const modelName = currentConfig.model || (activeModel === 'deepseek' ? 'deepseek-chat' : 'qwen-max');
+            const lengthCheck = checkContentLength(wrappedContent, type.prompt, modelName);
+            
+            if (lengthCheck.needSplit) {
+                console.log(`[快速评审] ⚠️ 内容超长 (${lengthCheck.actualLength}/${lengthCheck.limit})，启动分批评审`);
+                showToast(`内容较多(${testCaseCount || '未知'}条用例)，将分批进行评审...`, 'success');
+                
+                // 分割内容
+                const chunks = splitTestCases(wrappedContent, lengthCheck.limit);
+                console.log(`[快速评审] 分割为 ${chunks.length} 批次`);
+                
+                // 添加分批说明消息
+                addMessage('ai', `📊 检测到测试用例较多，已自动分为 ${chunks.length} 批次进行评审\n\n正在评审第 1/${chunks.length} 批次...`);
+                
+                // 逐批处理
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunk = chunks[i];
+                    console.log(`[快速评审] 处理第 ${i + 1}/${chunks.length} 批次，包含 ${chunk.caseCount || '未知'} 条用例`);
+                    
+                    // 构建分批 prompt
+                    let batchPrompt;
+                    const batchInfo = `\n\n📋 **批次信息**: 第 ${i + 1}/${chunks.length} 批${chunk.caseCount ? `，包含 ${chunk.caseCount} 条用例` : ''}\n\n`;
+                    
+                    if (type.prompt.includes('{content}')) {
+                        batchPrompt = type.prompt.replace('{content}', batchInfo + chunk.content);
+                    } else {
+                        batchPrompt = type.prompt + batchInfo + chunk.content;
+                    }
+                    
+                    // 显示进度
+                    if (i > 0) {
+                        addMessage('ai', `正在评审第 ${i + 1}/${chunks.length} 批次...`);
+                    }
+                    
+                    // 调用 API
+                    await callAI(batchPrompt, true, false); // 不触发继续评审提示
+                    
+                    // 批次间延迟，避免频率限制
+                    if (i < chunks.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
+                
+                // 所有批次完成后，显示继续评审提示
+                setTimeout(() => {
+                    addMessage('ai', `✅ 已完成所有 ${chunks.length} 批次的评审！`);
+                    showNextFilePrompt();
+                }, 1000);
+                
+            } else {
+                // 内容未超长，正常处理
+                console.log(`[快速评审] ✓ 内容长度正常 (${lengthCheck.actualLength}/${lengthCheck.limit})，单次评审`);
+                await callAI(prompt, true, true); // 第三个参数标记这是快速评审
+            }
+        }
+
+        // 检查内容是否超过模型限制
+        function checkContentLength(content, promptTemplate, modelName) {
+            const limit = MODEL_LIMITS[modelName] || 6000; // 默认使用最保守的限制
+            const templateLength = promptTemplate.length;
+            const availableLength = limit - templateLength - 1000; // 预留1000字符给 prompt 模板和包装内容
+            
+            console.log(`[长度检查] 模型: ${modelName}, 限制: ${limit}, 模板长度: ${templateLength}, 可用长度: ${availableLength}, 实际内容: ${content.length}`);
+            
+            return {
+                exceeded: content.length > availableLength,
+                limit: availableLength,
+                actualLength: content.length,
+                needSplit: content.length > availableLength
+            };
+        }
+
+        // 智能分割测试用例内容
+        function splitTestCases(content, chunkSize) {
+            const chunks = [];
+            
+            // 按【用例】标记分割（Excel格式）
+            if (content.includes('【用例')) {
+                const cases = content.split(/(?=【用例 \d+】)/);
+                let currentChunk = '';
+                let chunkIndex = 0;
+                
+                for (const testCase of cases) {
+                    if (!testCase.trim()) continue;
+                    
+                    if ((currentChunk + testCase).length > chunkSize && currentChunk) {
+                        chunks.push({
+                            index: chunkIndex++,
+                            content: currentChunk,
+                            caseCount: (currentChunk.match(/【用例 \d+】/g) || []).length
+                        });
+                        currentChunk = testCase;
+                    } else {
+                        currentChunk += testCase;
+                    }
+                }
+                
+                if (currentChunk) {
+                    chunks.push({
+                        index: chunkIndex,
+                        content: currentChunk,
+                        caseCount: (currentChunk.match(/【用例 \d+】/g) || []).length
+                    });
+                }
+            } 
+            // 按段落分割（其他格式）
+            else {
+                const lines = content.split('\n');
+                let currentChunk = '';
+                let chunkIndex = 0;
+                
+                for (const line of lines) {
+                    if ((currentChunk + line + '\n').length > chunkSize && currentChunk) {
+                        chunks.push({
+                            index: chunkIndex++,
+                            content: currentChunk,
+                            caseCount: null
+                        });
+                        currentChunk = line + '\n';
+                    } else {
+                        currentChunk += line + '\n';
+                    }
+                }
+                
+                if (currentChunk) {
+                    chunks.push({
+                        index: chunkIndex,
+                        content: currentChunk,
+                        caseCount: null
+                    });
+                }
+            }
+            
+            return chunks;
+        }
+
+        async function callAI(message, isSystemPrompt = false, isQuickReview = false) {
+            const config = getConfig();
+            const currentConfig = activeModel === 'deepseek' ? config.deepseek : config.qianwen;
+            const sendBtn = document.getElementById('sendBtn');
+            
+            sendBtn.disabled = true;
+            setStatus('loading', `正在使用 ${activeModel === 'deepseek' ? 'DeepSeek' : '千问'} 思考中...`);
+            showTypingIndicator();
+
+            try {
+                // 构建消息历史
+                const messages = [];
+                
+                // 添加系统提示词
+                messages.push({
+                    role: 'system',
+                    content: '你是一个专业的测试工程师,擅长测试用例设计、评审和质量分析。'
+                });
+                
+                if (isSystemPrompt) {
+                    // 快速评审模式：只发送当前的 prompt，不包含历史对话
+                    messages.push({ role: 'user', content: message });
+                    console.log('[callAI] 快速评审模式');
+                    console.log('[callAI] Prompt 长度:', message.length);
+                    console.log('[callAI] Prompt 预览 (前500字符):', message.substring(0, 500));
+                    console.log('[callAI] Prompt 预览 (后500字符):', message.substring(Math.max(0, message.length - 500)));
+                } else {
+                    // 普通对话模式：添加历史上下文
+                    const recentHistory = chatHistory.slice(-10);
+                    for (const msg of recentHistory) {
+                        if (msg.role === 'user' || msg.role === 'ai') {
+                            messages.push({
+                                role: msg.role === 'ai' ? 'assistant' : 'user',
+                                content: msg.content
+                            });
+                        }
+                    }
+                    messages.push({ role: 'user', content: message });
+                    console.log('[callAI] 普通对话模式');
+                    console.log('[callAI] 消息长度:', message.length);
+                }
+
+                console.log('[callAI] 发送消息数量:', messages.length);
+                console.log('[callAI] 使用模型:', activeModel, currentConfig.model);
+
+                let apiUrl, headers, requestBody;
+
+                if (activeModel === 'deepseek') {
+                    apiUrl = 'https://api.deepseek.com/chat/completions';
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentConfig.apiKey}`
+                    };
+                    requestBody = {
+                        model: currentConfig.model || 'deepseek-chat',
+                        messages: messages,
+                        temperature: 0.7,
+                        max_tokens: 8192, // 增加到 8K，支持更长的评审输出
+                        stream: false
+                    };
+                } else if (activeModel === 'qianwen') {
+                    // 检测是否在 HTTPS 环境且 API 是 HTTP
+                    const isHTTPS = window.location.protocol === 'https:';
+                    const configuredUrl = currentConfig.apiUrl || 'http://43.173.153.29:11436/v1/chat/completions';
+                    
+                    if (isHTTPS && configuredUrl.startsWith('http://')) {
+                        // 使用 Vercel 代理
+                        apiUrl = '/api/qianwen-proxy';
+                        headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        requestBody = {
+                            model: currentConfig.model || 'Qwen3-32B-AWQ',
+                            messages: messages
+                        };
+                        console.log('[callAI] 使用 Vercel 代理模式');
+                    } else {
+                        // 直接连接
+                        apiUrl = configuredUrl;
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentConfig.apiKey || 'xxx'}`
+                        };
+                        // 千问模型的 max_tokens 限制：qwen-max/plus 支持 8K，qwen-long 支持更大
+                        const maxTokens = (currentConfig.model && currentConfig.model.includes('long')) ? 30000 : 8192;
+                        requestBody = {
+                            model: currentConfig.model || 'Qwen3-32B-AWQ',
+                            messages: messages,
+                            temperature: 0.7,
+                            max_tokens: maxTokens // 根据模型动态设置
+                        };
+                        console.log('[callAI] 使用直连模式');
+                    }
+                }
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                removeTypingIndicator();
+
+                if (!response.ok) {
+                    console.error('API 错误响应:', data);
+                    throw new Error(data.error?.message || data.message || '请求失败');
+                }
+
+                if (data.choices && data.choices.length > 0) {
+                    const aiResponse = data.choices[0].message.content;
+                    const finishReason = data.choices[0].finish_reason;
+                    console.log('AI 响应长度:', aiResponse.length);
+                    console.log('完成原因:', finishReason);
+                    
+                    // 检查响应是否因为长度被截断
+                    if (finishReason === 'length') {
+                        console.warn('⚠️ AI响应被截断！原因：超过max_tokens限制');
+                        showToast('⚠️ AI响应可能不完整，建议使用qwen-long模型或分批评审', 'warning');
+                    }
+                    
+                    addMessage('ai', aiResponse);
+                    setStatus('connected', `已连接 (${activeModel === 'deepseek' ? 'DeepSeek' : '千问'})`);
+                    
+                    // 如果是快速评审,显示继续评审提示
+                    if (isQuickReview && currentFile) {
+                        setTimeout(() => {
+                            showNextFilePrompt();
+                        }, 1000); // 延迟1秒显示,让用户先看到评审结果
+                    }
+                } else {
+                    throw new Error('未获得有效响应');
+                }
+            } catch (err) {
+                console.error('调用 AI 错误:', err);
+                removeTypingIndicator();
+                
+                // 检测是否是混合内容错误
+                if (err.message.includes('Failed to fetch')) {
+                    const apiUrl = activeModel === 'qianwen' 
+                        ? (currentConfig.apiUrl || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions')
+                        : 'https://api.deepseek.com/chat/completions';
+                    
+                    if (apiUrl.startsWith('http://')) {
+                        addMessage('ai', `❌ 混合内容安全错误
+
+当前页面通过 HTTPS 加载,但 API 端点使用 HTTP:
+${apiUrl}
+
+浏览器阻止了这个不安全的请求。
+
+📋 解决方案:
+
+**方案 1: 下载到本地使用 (推荐)**
+1. 点击页面右键 → "另存为"
+2. 保存到本地任意目录
+3. 双击打开 HTML 文件
+4. 本地访问不受混合内容限制 ✅
+
+**方案 2: 配置 HTTPS API**
+- 将 API 服务器配置为支持 HTTPS
+- 或使用 HTTPS 反向代理
+
+**方案 3: 浏览器临时设置 (不推荐)**
+- Chrome: 点击地址栏的盾牌🛡️图标
+- 选择"加载不安全的脚本"
+- ⚠️ 注意: 这会降低安全性
+
+💡 **推荐**: 将此页面下载到本地使用最简单安全！`);
+                        setStatus('error', '混合内容错误 - 请下载到本地使用');
+                    } else {
+                        addMessage('ai', `❌ 网络错误：${err.message}\n\n请检查:\n1. API 服务器是否可访问\n2. API Key 是否正确\n3. 网络连接是否正常`);
+                        setStatus('error', '网络请求失败');
+                    }
+                } else {
+                    addMessage('ai', `❌ 错误：${err.message}`);
+                    setStatus('error', '请求失败');
+                }
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function clearChat() {
+            if (!confirm('确定要清空所有对话吗？')) return;
+            
+            chatHistory = [];
+            saveChatHistory();
+            
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = `
+                <div class="message message-ai">
+                    <div class="message-content">
+👋 <strong>对话已清空！</strong>
+
+请上传测试用例文件，然后选择评审类型或直接输入问题。</div>
+                </div>
+            `;
+            
+            showToast('对话已清空', 'success');
+        }
+
+        function exportChat() {
+            if (chatHistory.length === 0) {
+                showToast('暂无对话记录', 'error');
+                return;
+            }
+
+            let content = '# AI智能测试用例评审对话记录\n\n';
+            content += `导出时间：${new Date().toLocaleString()}\n\n`;
+            content += '---\n\n';
+
+            for (const msg of chatHistory) {
+                const role = msg.role === 'user' ? '👤 用户' : '🤖 AI';
+                const time = new Date(msg.timestamp).toLocaleString();
+                content += `### ${role} (${time})\n\n${msg.content}\n\n---\n\n`;
+            }
+
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `对话记录_${new Date().toISOString().slice(0, 10)}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('对话已导出', 'success');
+        }
+
+        // ==================== 连接测试 ====================
+        async function testConnection(provider) {
+            const config = getConfig();
+            const currentConfig = provider === 'deepseek' ? config.deepseek : config.qianwen;
+            
+            if (!currentConfig?.apiKey && provider !== 'qianwen') {
+                showToast(`请输入 ${provider === 'deepseek' ? 'DeepSeek' : '千问'} API Key`, 'error');
+                return;
+            }
+
+            showToast('正在测试连接...', 'info');
+
+            try {
+                let apiUrl, headers, requestBody;
+
+                if (provider === 'deepseek') {
+                    apiUrl = 'https://api.deepseek.com/chat/completions';
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentConfig.apiKey}`
+                    };
+                    requestBody = {
+                        model: currentConfig.model || 'deepseek-chat',
+                        messages: [{ role: 'user', content: '你好' }],
+                        max_tokens: 10
+                    };
+                } else if (provider === 'qianwen') {
+                    // 检测是否在 Vercel 上运行（HTTPS 环境）
+                    const isHTTPS = window.location.protocol === 'https:';
+                    const configuredUrl = currentConfig?.apiUrl || 'http://43.173.153.29:11436/v1/chat/completions';
+                    
+                    if (isHTTPS && configuredUrl.startsWith('http://')) {
+                        // 使用 Vercel 代理
+                        apiUrl = '/api/qianwen-proxy';
+                        headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        requestBody = {
+                            model: currentConfig?.model || 'Qwen3-32B-AWQ',
+                            messages: [
+                                { role: 'system', content: '你是一个专业的测试工程师' },
+                                { role: 'user', content: '你好' }
+                            ]
+                        };
+                        showToast('🔄 检测到 HTTPS 环境，使用代理模式...', 'info');
+                    } else {
+                        // 直接连接
+                        apiUrl = configuredUrl;
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentConfig?.apiKey || 'xxx'}`
+                        };
+                        requestBody = {
+                            model: currentConfig?.model || 'Qwen3-32B-AWQ',
+                            messages: [
+                                { role: 'system', content: '你是一个专业的测试工程师' },
+                                { role: 'user', content: '你好' }
+                            ],
+                            max_tokens: 10
+                        };
+                    }
+                }
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (response.ok) {
+                    showToast(`✅ ${provider === 'deepseek' ? 'DeepSeek' : '千问'} 连接成功！`, 'success');
+                } else {
+                    const data = await response.json();
+                    showToast(`❌ 连接失败：${data.error?.message || data.message || '未知错误'}`, 'error');
+                }
+            } catch (err) {
+                // 检测是否是混合内容错误
+                const configuredUrl = currentConfig?.apiUrl || '';
+                if (err.message.includes('Failed to fetch') && configuredUrl.startsWith('http://')) {
+                    showToast('❌ 混合内容错误：HTTPS 页面无法访问 HTTP API', 'error');
+                    showMixedContentHelp(configuredUrl);
+                } else {
+                    showToast('❌ 连接失败：' + err.message, 'error');
+                }
+            }
+        }
+        
+        // 显示混合内容错误帮助信息
+        function showMixedContentHelp(apiUrl) {
+            const helpMessage = `
+⚠️ 检测到混合内容安全错误
+
+当前页面通过 HTTPS 加载,但 API 端点使用 HTTP:
+${apiUrl}
+
+浏览器阻止了这个不安全的请求。
+
+📋 解决方案:
+
+方案 1: 使用 HTTPS API (推荐)
+- 如果可能,将 API 服务器配置为支持 HTTPS
+- 或者使用支持 HTTPS 的 API 代理服务
+
+方案 2: 在本地使用
+- 下载 HTML 文件到本地
+- 使用 file:// 或 http://localhost 访问
+- 本地访问不受混合内容限制
+
+方案 3: 浏览器设置 (临时方案,不推荐)
+- Chrome: 点击地址栏右侧的盾牌图标
+- 选择"加载不安全的脚本"
+- 注意: 这会降低安全性,仅用于测试
+
+💡 建议: 将此页面下载到本地使用,或配置 API 服务器支持 HTTPS`;
+            
+            addSystemMessage(helpMessage);
+        }
+
+        // ==================== UI 辅助函数 ====================
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+            if (modalId === 'reviewTypesModal') {
+                renderReviewTypesList();
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function updateStatus() {
+            const config = getConfig();
+            const hasDeepseek = config.deepseek?.apiKey;
+            const hasQianwen = config.qianwen?.apiKey;
+            
+            if (hasDeepseek || hasQianwen) {
+                const status = [];
+                if (hasDeepseek) status.push('DeepSeek');
+                if (hasQianwen) status.push('千问');
+                setStatus('connected', `已配置: ${status.join(' + ')}`);
+            } else {
+                setStatus('disconnected', '未配置 API Key');
+            }
+        }
+
+        function setStatus(status, text) {
+            const dot = document.getElementById('statusDot');
+            const textEl = document.getElementById('statusText');
+            
+            dot.className = 'status-dot';
+            if (status === 'loading') {
+                dot.classList.add('loading');
+            } else if (status === 'disconnected' || status === 'error') {
+                dot.classList.add('disconnected');
+            }
+            
+            textEl.textContent = '服务状态: ' + text;
+        }
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
+        }
+
+        // ==================== 文件管理功能 ====================
+        function changeFile() {
+            const reviewSummary = currentFileReviewHistory.length > 0 
+                ? `\n\n已完成评审: ${currentFileReviewHistory.map(h => h.typeName).join(', ')}`
+                : '';
+            
+            if (confirm('是否要更换当前文件?' + reviewSummary + '\n\n当前文件: ' + (currentFile ? currentFile.name : '无') + '\n\n点击"确定"选择新文件')) {
+                document.getElementById('fileInput').click();
+            }
+        }
+
+        function clearCurrentFile() {
+            if (!currentFile) {
+                showToast('当前没有已加载的文件', 'info');
+                return;
+            }
+
+            const reviewSummary = currentFileReviewHistory.length > 0 
+                ? `\n已完成评审: ${currentFileReviewHistory.map(h => h.typeName).join(', ')}\n`
+                : '';
+
+            if (confirm('确定要清除当前文件吗?\n\n文件: ' + currentFile.name + '\n内容: ' + fileContent.length + ' 字符' + reviewSummary + '\n\n清除后需要重新上传文件才能进行评审。')) {
+                currentFile = null;
+                fileContent = '';
+                currentFileReviewHistory = []; // 重置评审历史
+                
+                // 隐藏文件信息
+                document.getElementById('fileInfo').style.display = 'none';
+                
+                // 清空文件输入
+                document.getElementById('fileInput').value = '';
+                
+                // 更新状态栏
+                document.getElementById('fileStatusBar').textContent = '';
+                
+                // 禁用快速评审按钮
+                renderQuickReviewButtons();
+                
+                showToast('文件已清除', 'success');
+                
+                console.log('[文件管理] 当前文件已清除');
+            }
+        }
+
+        function showNextFilePrompt() {
+            // 获取所有评审类型
+            const allTypes = loadReviewTypes();
+            
+            // 找出未评审的类型
+            const reviewedTypeIds = currentFileReviewHistory.map(h => h.typeId);
+            const unreviewedTypes = allTypes.filter(t => !reviewedTypeIds.includes(t.id));
+            
+            console.log('[提示框] 已评审类型:', reviewedTypeIds);
+            console.log('[提示框] 未评审类型:', unreviewedTypes.map(t => t.name));
+            
+            // 根据未评审类型数量决定提示内容
+            let promptHtml;
+            
+            if (unreviewedTypes.length > 0) {
+                // 还有未评审的类型，提供快速评审按钮
+                const quickReviewButtons = unreviewedTypes.map(type => `
+                    <button onclick="closeNextFilePrompt(); quickReview('${type.id}')" 
+                            style="flex: 1; padding: 10px 14px; background: linear-gradient(135deg, ${getTypeGradient(type.color)}); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        ${type.icon} ${type.name}
+                    </button>
+                `).join('');
+                
+                promptHtml = `
+                    <div style="background: #F0FDF4; border: 2px solid #10B981; border-radius: 12px; padding: 16px; margin: 10px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <span style="font-size: 24px;">✅</span>
+                            <strong style="color: #059669; font-size: 15px;">评审完成!</strong>
+                        </div>
+                        <div style="color: #1F2937; font-size: 14px; margin-bottom: 12px;">
+                            当前文件 <strong>${currentFile ? currentFile.name : '未知'}</strong> 的 <span style="color: #059669; font-weight: 600;">${currentFileReviewHistory[currentFileReviewHistory.length - 1].typeName}</span> 已评审完成。
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #6B7280; margin-bottom: 8px;">
+                                💡 还有 <strong style="color: #10B981;">${unreviewedTypes.length}</strong> 种评审类型未进行：
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
+                                ${quickReviewButtons}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="changeFile()" style="flex: 1; padding: 10px 14px; background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                                📁 更换文件
+                            </button>
+                            <button onclick="closeNextFilePrompt()" style="flex: 1; padding: 10px 14px; background: white; color: #6B7280; border: 2px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                                ⏸️ 暂不评审
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // 所有类型都已评审，仅提示更换文件
+                promptHtml = `
+                    <div style="background: #EFF6FF; border: 2px solid #3B82F6; border-radius: 12px; padding: 16px; margin: 10px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <span style="font-size: 24px;">🎉</span>
+                            <strong style="color: #1E40AF; font-size: 15px;">全部评审完成!</strong>
+                        </div>
+                        <div style="color: #1F2937; font-size: 14px; margin-bottom: 12px;">
+                            当前文件 <strong>${currentFile ? currentFile.name : '未知'}</strong> 的所有评审类型已完成。
+                        </div>
+                        <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: #6B7280;">
+                                ✓ 已完成 <strong>${currentFileReviewHistory.length}</strong> 种评审类型：
+                                <span style="color: #3B82F6; font-weight: 500;">${currentFileReviewHistory.map(h => h.typeName).join(', ')}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="changeFile()" style="flex: 1; padding: 10px 14px; background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                                📁 评审下一个文件
+                            </button>
+                            <button onclick="closeNextFilePrompt()" style="flex: 1; padding: 10px 14px; background: white; color: #6B7280; border: 2px solid #E5E7EB; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                                ⏸️ 暂不评审
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 在聊天区域底部添加提示
+            const chatMessages = document.getElementById('chatMessages');
+            const promptDiv = document.createElement('div');
+            promptDiv.id = 'nextFilePrompt';
+            promptDiv.className = 'message';
+            promptDiv.innerHTML = promptHtml;
+            chatMessages.appendChild(promptDiv);
+            
+            // 滚动到底部
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 辅助函数：根据类型颜色返回渐变色
+        function getTypeGradient(color) {
+            const gradients = {
+                'boundary': '#6366F1 0%, #8B5CF6 100%',
+                'ambiguity': '#10B981 0%, #34D399 100%',
+                'format': '#F59E0B 0%, #FBBF24 100%',
+                'custom': '#EC4899 0%, #F472B6 100%'
+            };
+            return gradients[color] || gradients['custom'];
+        }
+
+        function closeNextFilePrompt() {
+            const prompt = document.getElementById('nextFilePrompt');
+            if (prompt) {
+                prompt.remove();
+            }
+        }
+
+        // 自动调整输入框高度
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        });
+
+        // 点击模态框外部关闭
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
