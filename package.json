@@ -1,15 +1,10 @@
 {
   "name": "video-analyzer-vercel",
   "version": "2.0.0",
-  "description": "视频分析工具 - Vercel部署版(已解决CORS问题)",
+  "description": "视频逐帧分析与AI提示词生成 - Vercel在线版",
   "type": "module",
-  "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel --prod"
-  },
-  "dependencies": {},
-  "devDependencies": {},
   "engines": {
     "node": ">=18.x"
-  }
+  },
+  "dependencies": {}
 }
