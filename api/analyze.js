@@ -120,14 +120,31 @@ async function analyzeWithQwen(imageDataUrl, apiKey, model = 'qwen-vl-max', base
     };
   }
 
-  const response = await fetch(apiUrl, {
+  // 使用动态import来加载node-fetch（兼容Vercel Edge Runtime）
+  let fetchImpl;
+  if (typeof fetch !== 'undefined') {
+    // 使用内置的fetch（Node.js 18+）
+    fetchImpl = fetch;
+  } else {
+    // 降级到node-fetch
+    const nodeFetch = await import('node-fetch');
+    fetchImpl = nodeFetch.default;
+  }
+
+  const response = await fetchImpl(apiUrl, {
     method: 'POST',
     headers: headers,
     body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorText = await response.text();
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      errorData = { message: errorText };
+    }
     throw new Error(errorData.message || errorData.error?.message || `千问API错误: ${response.status}`);
   }
 
@@ -153,7 +170,18 @@ async function analyzeWithQwen(imageDataUrl, apiKey, model = 'qwen-vl-max', base
 
 // 火山引擎API调用
 async function analyzeWithVolcEngine(imageDataUrl, apiKey, model = 'doubao-vision-pro-32k', baseUrl = 'https://ark.cn-beijing.volces.com/api/v3') {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  // 使用动态import来加载node-fetch（兼容Vercel Edge Runtime）
+  let fetchImpl;
+  if (typeof fetch !== 'undefined') {
+    // 使用内置的fetch（Node.js 18+）
+    fetchImpl = fetch;
+  } else {
+    // 降级到node-fetch
+    const nodeFetch = await import('node-fetch');
+    fetchImpl = nodeFetch.default;
+  }
+
+  const response = await fetchImpl(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -182,7 +210,13 @@ async function analyzeWithVolcEngine(imageDataUrl, apiKey, model = 'doubao-visio
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorText = await response.text();
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      errorData = { message: errorText };
+    }
     throw new Error(errorData.error?.message || `火山引擎API错误: ${response.status}`);
   }
 
