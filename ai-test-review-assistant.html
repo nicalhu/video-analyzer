@@ -904,8 +904,8 @@
                     </div>
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label class="form-label">API 端点</label>
-                        <input type="text" class="form-input" id="qianwenApiUrl" value="http://43.173.153.29:11436/v1/chat/completions">
-                        <div class="form-hint">默认: http://43.173.153.29:11436/v1/chat/completions (你的服务器)</div>
+                        <input type="text" class="form-input" id="qianwenApiUrl" value="/api/proxy/v1/chat/completions">
+                        <div class="form-hint">默认: /api/proxy/v1/chat/completions (你的服务器)</div>
                     </div>
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label class="form-label">API Key</label>
@@ -1258,12 +1258,12 @@
             
             // 加载千问配置
             if (config.qianwen) {
-                document.getElementById('qianwenApiUrl').value = config.qianwen.apiUrl || 'http://43.173.153.29:11436/v1/chat/completions';
+                document.getElementById('qianwenApiUrl').value = config.qianwen.apiUrl || '/api/proxy/v1/chat/completions';
                 document.getElementById('qianwenApiKey').value = config.qianwen.apiKey || '';
                 document.getElementById('qianwenModel').value = config.qianwen.model || 'Qwen3-32B-AWQ';
             } else {
                 // 设置默认值为你的千问 API
-                document.getElementById('qianwenApiUrl').value = 'http://43.173.153.29:11436/v1/chat/completions';
+                document.getElementById('qianwenApiUrl').value = '/api/proxy/v1/chat/completions';
                 document.getElementById('qianwenModel').value = 'Qwen3-32B-AWQ';
             }
         }
@@ -1286,7 +1286,7 @@
                     model: deepseekModel
                 },
                 qianwen: {
-                    apiUrl: qianwenApiUrl || 'http://43.173.153.29:11436/v1/chat/completions',
+                    apiUrl: qianwenApiUrl || '/api/proxy/v1/chat/completions',
                     apiKey: qianwenApiKey,
                     model: qianwenModel || 'Qwen3-32B-AWQ'
                 }
@@ -2897,3 +2897,4 @@ ${fileContent}
     </script>
 </body>
 </html>
+
