@@ -1,17 +1,16 @@
 {
-  "version": 2,
-  "name": "video-analyzer",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/视频分析工具-独立版.html"
+      "src": "/ai-test-review-assistant.html",
+      "dest": "/ai-test-review-assistant.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
-  ],
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  ]
 }
+
+
 
 
